@@ -58,9 +58,8 @@ commandList =
 
 main :: IO ()
 main = do
-    ini <- readIniFile "config.ini"
-    ini' <- either die return ini
-    conf <- either die return (readConfig ini')
+    ini <- readIniFile "config.ini" >>= either die return
+    conf <- either die return (readConfig ini)
 
     run conf
 
