@@ -4,6 +4,7 @@
 module Types where
 
 import Data.Text (Text)
+import Data.Char (isSpace)
 
 import Control.Lens
 
@@ -40,7 +41,7 @@ command :: Parser Command
 command = do
     char '!'
     cmd <- many alphaNum
-    args <- many (many alphaNum)
+    args <- (many . many . satisfy) (not . isSpace)
 
     case cmd of
         "commands" -> return CmdCommands
