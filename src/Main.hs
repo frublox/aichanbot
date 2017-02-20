@@ -3,55 +3,22 @@
 
 module Main where
 
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as Bytes
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Control.Lens
-import Text.Parsec
-import Text.Parsec.Text
-import Data.Monoid ((<>))
-import Network.IRC.Client
-import Control.Monad.IO.Class (liftIO)
 import Data.List (intersperse)
 import Data.Ini
-import System.Exit
+import Data.Monoid ((<>))
 
-makeLenses ''Event
-makeLenses ''InstanceConfig
+import Control.Lens
+import Control.Monad.IO.Class (liftIO)
 
-data BotConfig = BotConfig
-    { _botNick :: Text
-    , _pass :: Text
-    , _channel :: Text
-    }
-makeLenses ''BotConfig
+import Text.Parsec
+import Text.Parsec.Text
 
-data BotState = BotState
-    { _config :: BotConfig
-    }
-makeLenses ''BotState
+import Network.IRC.Client
+import System.Exit (die)
 
-initBotState :: BotConfig -> BotState
-initBotState conf = BotState
-    { _config = conf
-    }
-
-data Command
-    = CmdUnknown
-    | CmdCommands
-    | CmdHi
-
-command :: Parser Command
-command = do
-    char '!'
-    cmd <- many alphaNum
-
-    case cmd of
-        "commands" -> return CmdCommands
-        "list" -> return CmdCommands
-        "hi" -> return CmdHi
-        _ -> return CmdUnknown
+import Types
 
 commandList :: [Text]
 commandList =
