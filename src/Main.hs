@@ -10,7 +10,7 @@ import Data.Ini
 import Data.Monoid ((<>))
 
 import Control.Lens
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class
 
 import Text.Parsec
 import Text.Parsec.Text
@@ -19,6 +19,7 @@ import Network.IRC.Client
 import System.Exit (die)
 
 import Types
+import Wrappers
 
 commandList :: [Text]
 commandList =
@@ -42,7 +43,7 @@ readConfig ini = do
     let conf = BotConfig nick pass channel
     return conf
 
-run :: BotConfig -> IO ()
+run :: MonadIO io => BotConfig -> io ()
 run conf = do
     conn <- connectWithTLS "irc.chat.twitch.tv" 443 10
     let conn' = conn { _onconnect = onConnect }
@@ -58,24 +59,6 @@ onConnect = do
     s <- state
     send $ RawMsg ("NICK " <> s^.config.botNick)
     send $ RawMsg ("JOIN " <> s^.config.channel)
-
-privmsg :: Text -> Text -> StatefulIRC a ()
-privmsg chan msg = send $ RawMsg ("PRIVMSG " <> chan <> " :" <> msg)
-
-announce :: Text -> StatefulIRC BotState ()
-announce msg = do
-    s <- state
-    privmsg (s^.config.channel) msg
-
-replyTo :: Maybe Text -> Text -> StatefulIRC BotState ()
-replyTo user msg = do
-    s <- state
-    privmsg (s^.config.channel) msg'
-
-    where
-        msg' = case user of
-            Just user' -> "@" <> user' <> " " <> msg
-            Nothing -> msg
 
 handler :: EventHandler BotState
 handler = EventHandler "bot" EPrivmsg $ \event -> do
