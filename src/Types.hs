@@ -40,6 +40,7 @@ command :: Parser Command
 command = do
     char '!'
     cmd <- many alphaNum
+    args <- many (many alphaNum)
 
     case cmd of
         "commands" -> return CmdCommands
