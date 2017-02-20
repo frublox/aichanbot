@@ -9,10 +9,9 @@ import Data.Ini
 import Data.Monoid ((<>))
 
 import Control.Lens
-import Control.Monad.IO.Class
+import Control.Monad.IO.Class (MonadIO)
 
 import Text.Parsec
-import Text.Parsec.Text
 
 import Network.IRC.Client
 import System.Exit (die)
