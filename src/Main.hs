@@ -17,8 +17,11 @@ import Data.List (intersperse)
 import Data.Ini
 import System.Exit
 
+makeLenses ''Event
+makeLenses ''InstanceConfig
+
 data BotConfig = BotConfig
-    { _nick :: Text
+    { _botNick :: Text
     , _pass :: Text
     , _channel :: Text
     }
@@ -76,19 +79,17 @@ run :: BotConfig -> IO ()
 run conf = do
     conn <- connectWithTLS "irc.chat.twitch.tv" 443 10
     let conn' = conn { _onconnect = onConnect }
-    startStateful conn' cfg' (initBotState conf)
+    startStateful conn' cfg (initBotState conf)
 
     where
-        cfg = defaultIRCConf (conf^.nick)
-        cfg' = cfg
-            { _password = Just (conf^.pass)
-            , _eventHandlers = handler : defaultEventHandlers
-            }
+        cfg = defaultIRCConf (conf^.botNick) 
+            & password .~ Just (conf^.pass) 
+            & eventHandlers .~ handler : defaultEventHandlers
 
 onConnect :: StatefulIRC BotState ()
 onConnect = do
     s <- state
-    send $ RawMsg ("NICK " <> s^.config.nick)
+    send $ RawMsg ("NICK " <> s^.config.botNick)
     send $ RawMsg ("JOIN " <> s^.config.channel)
 
 privmsg :: Text -> Text -> StatefulIRC a ()
@@ -113,7 +114,7 @@ handler :: EventHandler BotState
 handler = EventHandler "bot" EPrivmsg $ \event -> do
     s <- state
 
-    case _message event of
+    case event^.message of
         Privmsg from (Right msg) -> do
             let parsedCommand = parse command "" msg
             let user = extractUser event
@@ -126,7 +127,7 @@ handler = EventHandler "bot" EPrivmsg $ \event -> do
     where
         extractUser :: Event Text -> Maybe Text
         extractUser event =
-            case _source event of
+            case event^.source of
                 User user -> Just user
                 Channel _ user -> Just user
                 _ -> Nothing
