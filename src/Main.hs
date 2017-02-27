@@ -9,7 +9,7 @@ import Data.Ini
 import Data.Monoid ((<>))
 
 import Control.Lens
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 
 import Text.Parsec
 
@@ -43,7 +43,7 @@ readConfig ini = do
 
 run :: MonadIO io => BotConfig -> io ()
 run conf = do
-    conn <- connectWithTLS "irc.chat.twitch.tv" 443 10
+    conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 1
     let conn' = conn { _onconnect = onConnect }
     startStateful conn' cfg (initBotState conf)
 
@@ -68,7 +68,7 @@ handler = EventHandler "bot" EPrivmsg $ \event -> do
             let user = extractUser event
 
             case parsedCommand of
-                Left _ -> return ()
+                Left e -> liftIO (print e)
                 Right cmd -> handleCommand user cmd
         _ -> return ()
 
@@ -84,7 +84,12 @@ handleCommand :: Maybe Text -> Command -> StatefulIRC BotState ()
 handleCommand user cmd =
     case cmd of
         CmdUnknown -> replyTo user "idk that command :/"
-        CmdHi -> replyTo user "hi! VoHiYo"
+        CmdHi maybeUser -> do
+            liftIO $ print maybeUser
+
+            case maybeUser of
+                Just _ -> replyTo maybeUser "hi! VoHiYo"
+                Nothing -> replyTo user "hi! VoHiYo"
         CmdCommands -> do
             let msg = Text.concat (intersperse ", " commandList)
             replyTo user msg

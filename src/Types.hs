@@ -3,8 +3,9 @@
 
 module Types where
 
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.Char (isSpace)
+import Data.List (words)
 
 import Control.Lens
 
@@ -35,16 +36,23 @@ initBotState conf = BotState
 data Command
     = CmdUnknown
     | CmdCommands
-    | CmdHi
+    | CmdHi (Maybe Text)
 
 command :: Parser Command
 command = do
     char '!'
     cmd <- many alphaNum
-    args <- (many . many . satisfy) (not . isSpace)
+    args <- fmap words (manyTill anyChar eof)
 
     case cmd of
         "commands" -> return CmdCommands
         "list" -> return CmdCommands
-        "hi" -> return CmdHi
+        "hi" -> case args of
+            [] -> (return . CmdHi) Nothing
+            (user:_) -> (return . CmdHi . Just . pack . removePrefix) user
         _ -> return CmdUnknown
+
+    where
+        removePrefix s = case s of
+            ('@':s') -> s'
+            _ -> s
