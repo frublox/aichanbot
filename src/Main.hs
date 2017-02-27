@@ -89,9 +89,7 @@ handleCommand :: Maybe Text -> Command -> StatefulIRC BotState ()
 handleCommand user cmd =
     case cmd of
         CmdUnknown -> replyTo user "idk that command :/"
-        CmdHi maybeUser -> do
-            liftIO $ print maybeUser
-
+        CmdHi maybeUser ->
             case maybeUser of
                 Just _ -> replyTo maybeUser "hi! VoHiYo"
                 Nothing -> replyTo user "hi! VoHiYo"
