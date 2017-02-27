@@ -23,7 +23,7 @@ import Wrappers
 commandList :: [Text]
 commandList =
     [ "!hi"
-    , "!commands (!list)"
+    , "!commands (!list, !cmds)"
     ]
 
 main :: IO ()

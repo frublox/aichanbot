@@ -62,9 +62,12 @@ command = do
     case cmd of
         "commands" -> return CmdCommands
         "list" -> return CmdCommands
+        "cmds" -> return CmdCommands
+
         "hi" -> case args of
             [] -> (return . CmdHi) Nothing
             (user:_) -> (return . CmdHi . Just . pack . removePrefix) user
+        
         _ -> return CmdUnknown
 
     where
