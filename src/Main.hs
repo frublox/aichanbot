@@ -22,7 +22,8 @@ import Wrappers
 
 commandList :: [Text]
 commandList =
-    [ "!hi"
+    [ "!hi [username]"
+    , "!bye [username]"
     , "!commands (!list, !cmds)"
     ]
 
@@ -89,10 +90,13 @@ handleCommand :: Maybe Text -> Command -> StatefulIRC BotState ()
 handleCommand user cmd =
     case cmd of
         CmdUnknown -> replyTo user "idk that command :/"
-        CmdHi maybeUser ->
-            case maybeUser of
-                Just _ -> replyTo maybeUser "hi! VoHiYo"
-                Nothing -> replyTo user "hi! VoHiYo"
+        CmdHi target -> case target of
+            Just _ -> replyTo target "hi! VoHiYo"
+            Nothing -> replyTo user "hi! VoHiYo"
+        CmdBye target -> case target of
+            Just _ -> replyTo target "cya! VoHiYo"
+            Nothing -> replyTo user "cya! VoHiYo"
         CmdCommands -> do
             let msg = Text.concat (intersperse ", " commandList)
-            replyTo user msg
+            replyTo user ("[arg] means an optional argument, usernames"
+                <> " can be with or without an @ symbol --- " <> msg)

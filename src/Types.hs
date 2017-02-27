@@ -52,6 +52,7 @@ data Command
     = CmdUnknown
     | CmdCommands
     | CmdHi (Maybe Text)
+    | CmdBye (Maybe Text)
 
 command :: Parser Command
 command = do
@@ -65,12 +66,17 @@ command = do
         "cmds" -> return CmdCommands
 
         "hi" -> case args of
-            [] -> (return . CmdHi) Nothing
-            (user:_) -> (return . CmdHi . Just . pack . removePrefix) user
-        
+            [] -> return (CmdHi Nothing)
+            (user:_) -> return $ CmdHi (Just (toText user))
+
+        "bye" -> case args of
+            [] -> return (CmdBye Nothing)
+            (user:_) -> return $ CmdBye (Just (toText user))
+
         _ -> return CmdUnknown
 
     where
+        toText = pack . removePrefix
         removePrefix s = case s of
             ('@':s') -> s'
             _ -> s
