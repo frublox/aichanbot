@@ -9,11 +9,12 @@ import Data.Ini
 import Data.Monoid ((<>))
 
 import Control.Lens
+import Control.Concurrent.Lifted (fork)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 
 import Text.Parsec
 
-import Network.IRC.Client
+import Network.IRC.Client hiding (send)
 import System.Exit (die)
 
 import Types
@@ -45,7 +46,8 @@ run :: MonadIO io => BotConfig -> io ()
 run conf = do
     conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 1
     let conn' = conn { _onconnect = onConnect }
-    startStateful conn' cfg (initBotState conf)
+    botState <- initBotState conf
+    startStateful conn' cfg botState
 
     where
         cfg = defaultIRCConf (conf^.botNick) 
@@ -58,6 +60,9 @@ onConnect = do
     send $ RawMsg ("NICK " <> s^.config.botNick)
     send $ RawMsg ("JOIN " <> s^.config.channel)
 
+    fork rateLimitTimer
+    return ()
+
 handler :: EventHandler BotState
 handler = EventHandler "bot" EPrivmsg $ \event -> do
     s <- state
@@ -68,7 +73,7 @@ handler = EventHandler "bot" EPrivmsg $ \event -> do
             let user = extractUser event
 
             case parsedCommand of
-                Left e -> liftIO (print e)
+                Left err -> liftIO (print err)
                 Right cmd -> handleCommand user cmd
         _ -> return ()
 
