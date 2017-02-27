@@ -4,4 +4,4 @@ A simple Twitch bot that implements rate-limiting, message-queueing, and a coupl
 
 To do:
 - Add command cooldowns
-- Rewrite functions to use a StateT BotState monad, rather than manually reading/updating state through StatefulIRC 
+- Rewrite functions to do things in `StateT BotState`, rather than manually reading/updating state through `StatefulIRC`
