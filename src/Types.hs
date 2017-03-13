@@ -31,43 +31,27 @@ data BotConfig = BotConfig
 makeLenses ''BotConfig
 
 data BotState = BotState
-    { _timeLeft :: TVar Int -- Time left in seconds until rate limit resets
+    { _config :: BotConfig
+    , _timeLeft :: TVar Int -- Time left in seconds until rate limit resets
     , _msgsSent :: TVar Int -- Number of msgs sent since last rate limit reset
     , _msgQueue :: TChan UnicodeMessage
     }
 makeLenses ''BotState
 
-initBotState :: MonadIO io => io BotState
-initBotState = atomicallyL $ do
+initBotState :: MonadIO io => BotConfig -> io BotState
+initBotState botConf = atomicallyL $ do
     timeLeft' <- newTVar 20
     msgsSent' <- newTVar 0
     msgQueue' <- newTChan
 
     return $ BotState
-        { _timeLeft = timeLeft'
+        { _config = botConf
+        , _timeLeft = timeLeft'
         , _msgsSent = msgsSent'
         , _msgQueue = msgQueue'
         }
 
-type Bot a = ReaderT (IRCState IrcEnv) (StateT IrcEnv IO) a
-
-data IrcEnv = IrcEnv
-    { _config :: BotConfig
-    , _botState :: BotState
-    }
-makeLenses ''IrcEnv
-
-runBot :: Bot a -> StatefulIRC IrcEnv a
-runBot bot = do
-    s <- state
-    ircS <- ircState
-
-    let unReader = runReaderT bot ircS
-
-    (result, s') <- liftIO (runStateT unReader s)
-    putState s'
-
-    return result
+type Bot a = StatefulIRC BotState a
 
 data Command
     = CmdUnknown

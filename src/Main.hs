@@ -44,15 +44,13 @@ readConfig ini = do
 
 run :: MonadIO io => BotConfig -> io ()
 run botConf = do
-    botState <- initBotState
+    botState <- initBotState botConf
 
     conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 1
 
     let conn' = conn { _onconnect = onConnect }
-    let env = IrcEnv botConf botState
 
-    newIRCState conn' ircConf env
-    startStateful conn' ircConf env
+    startStateful conn' ircConf botState
 
     where
         ircConf = defaultIRCConf (botConf^.botNick)
@@ -60,17 +58,18 @@ run botConf = do
             & password .~ Just (botConf^.pass) 
             & eventHandlers .~ handler : defaultEventHandlers
 
-onConnect :: StatefulIRC IrcEnv ()
-onConnect = runBot $ do
-    chan <- use (config.channel)
+onConnect :: Bot ()
+onConnect = do
+    s <- state
 
+    let chan = s^.config.channel
     send $ RawMsg ("JOIN " <> chan)
 
     fork rateLimitTimer
     return ()
 
-handler :: EventHandler IrcEnv
-handler = EventHandler "bot" EPrivmsg $ \event -> runBot $ do
+handler :: EventHandler BotState
+handler = EventHandler "bot" EPrivmsg $ \event -> do
     case event^.message of
         Privmsg _ (Right msg) -> do
             let parsedCommand = parse command "" msg

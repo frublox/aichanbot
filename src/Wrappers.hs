@@ -18,32 +18,27 @@ import qualified Network.IRC.Client as Irc
 import Types
 import Lifted (readTVarIOL, atomicallyL)
 
--- Run a computation in the StatefulIRC monad from the Bot monad
-runStatefulIRC :: StatefulIRC IrcEnv a -> Bot a
-runStatefulIRC action = do
-    ircS <- ask
-    liftIO (runReaderT action ircS)
-
 addToMsgQueue :: UnicodeMessage -> Bot ()
 addToMsgQueue msg = do
-    msgQueueRef <- use (botState.msgQueue)
-    atomicallyL (writeTChan msgQueueRef msg)
+    s <- state
+    atomicallyL $ writeTChan (s^.msgQueue) msg
 
 send :: UnicodeMessage -> Bot ()
 send msg = do
-    msgsSentRef <- use (botState.msgsSent)
-    numMsgsSent <- readTVarIOL msgsSentRef
+    s <- state
+
+    numMsgsSent <- readTVarIOL (s^.msgsSent)
 
     case numMsgsSent < 20 of
         True -> do
-            runStatefulIRC (Irc.send msg)
-            atomicallyL (modifyTVar' msgsSentRef (+1))
+            Irc.send msg
+            atomicallyL $ modifyTVar' (s^.msgsSent) (+1)
         False -> addToMsgQueue msg
 
 sendMsgQueue :: Bot ()
 sendMsgQueue = do
-    msgQueueRef <- use (botState.msgQueue)
-    msg <- atomicallyL (tryReadTChan msgQueueRef)
+    s <- state
+    msg <- atomicallyL $ tryReadTChan (s^.msgQueue)
 
     case msg of
         Nothing -> return ()
@@ -51,20 +46,18 @@ sendMsgQueue = do
 
 rateLimitTimer :: Bot ()
 rateLimitTimer = do
-    timeLeftRef <- use (botState.timeLeft)
+    s <- state
 
     threadDelay 1000
-    atomicallyL $ modifyTVar' timeLeftRef (subtract 1)
+    atomicallyL $ modifyTVar' (s^.timeLeft) (subtract 1)
 
-    remaining <- readTVarIOL timeLeftRef
+    remaining <- readTVarIOL (s^.timeLeft)
 
     case remaining > 0 of
         False -> do
-            msgsSentRef <- use (botState.msgsSent)
-
             atomicallyL $ do
-                writeTVar timeLeftRef 20
-                writeTVar msgsSentRef 0
+                writeTVar (s^.timeLeft) 20
+                writeTVar (s^.msgsSent) 0
 
             sendMsgQueue
             rateLimitTimer
@@ -75,13 +68,13 @@ privMsg chan msgText = send $ RawMsg ("PRIVMSG " <> chan <> " :" <> msgText)
 
 announce :: Text -> Bot ()
 announce msg = do
-    chan <- use (config.channel)
-    privMsg chan msg
+    s <- state
+    privMsg (s^.config.channel) msg
 
 replyTo :: Maybe Text -> Text -> Bot ()
 replyTo maybeUser msg = do
-    chan <- use (config.channel)
-    privMsg chan msg'
+    s <- state
+    privMsg (s^.config.channel) msg'
 
     where
         msg' = case maybeUser of
