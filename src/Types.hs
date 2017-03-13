@@ -38,10 +38,10 @@ data BotState = BotState
 makeLenses ''BotState
 
 initBotState :: MonadIO io => io BotState
-initBotState = do
-    timeLeft' <- atomicallyL (newTVar 20)
-    msgsSent' <- atomicallyL (newTVar 0)
-    msgQueue' <- atomicallyL newTChan
+initBotState = atomicallyL $ do
+    timeLeft' <- newTVar 20
+    msgsSent' <- newTVar 0
+    msgQueue' <- newTChan
 
     return $ BotState
         { _timeLeft = timeLeft'
