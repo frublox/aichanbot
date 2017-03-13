@@ -26,8 +26,8 @@ runStatefulIRC action = do
 
 addToMsgQueue :: UnicodeMessage -> Bot ()
 addToMsgQueue msg = do
-    msgQueue' <- use (botState.msgQueue)
-    atomicallyL (writeTChan msgQueue' msg)
+    msgQueueRef <- use (botState.msgQueue)
+    atomicallyL (writeTChan msgQueueRef msg)
 
 send :: UnicodeMessage -> Bot ()
 send msg = do
