@@ -24,8 +24,8 @@ runStatefulIRC action = do
     ircS <- ask
     liftIO (runReaderT action ircS)
 
-addToQueue :: UnicodeMessage -> Bot ()
-addToQueue msg = do
+addToMsgQueue :: UnicodeMessage -> Bot ()
+addToMsgQueue msg = do
     msgQueue' <- use (botState.msgQueue)
     atomicallyL (writeTChan msgQueue' msg)
 
@@ -38,7 +38,7 @@ send msg = do
         True -> do
             runStatefulIRC (Irc.send msg)
             atomicallyL (modifyTVar' msgsSentRef (+1))
-        False -> addToQueue msg
+        False -> addToMsgQueue msg
 
 sendMsgQueue :: Bot ()
 sendMsgQueue = do
