@@ -54,7 +54,6 @@ rateLimitTimer = do
     timeLeftRef <- use (botState.timeLeft)
 
     threadDelay 1000
-
     atomicallyL $ modifyTVar' timeLeftRef (subtract 1)
 
     remaining <- readTVarIOL timeLeftRef
