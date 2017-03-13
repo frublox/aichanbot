@@ -40,42 +40,45 @@ readConfig ini = do
     pass <- lookupValue "config" "pass" ini
     channel <- lookupValue "config" "channel" ini
 
-    let conf = BotConfig nick pass channel
-    return conf
+    return (BotConfig nick pass channel)
 
 run :: MonadIO io => BotConfig -> io ()
-run conf = do
+run botConf = do
+    botState <- initBotState
+
     conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 1
+
     let conn' = conn { _onconnect = onConnect }
-    botState <- initBotState conf
-    startStateful conn' cfg botState
+    let env = IrcEnv botConf botState
+
+    newIRCState conn' ircConf env
+    startStateful conn' ircConf env
 
     where
-        cfg = defaultIRCConf (conf^.botNick) 
-            & password .~ Just (conf^.pass) 
+        ircConf = defaultIRCConf (botConf^.botNick)
+            & nick .~ (botConf^.botNick)
+            & password .~ Just (botConf^.pass) 
             & eventHandlers .~ handler : defaultEventHandlers
 
-onConnect :: StatefulIRC BotState ()
-onConnect = do
-    s <- state
-    send $ RawMsg ("NICK " <> s^.config.botNick)
-    send $ RawMsg ("JOIN " <> s^.config.channel)
+onConnect :: StatefulIRC IrcEnv ()
+onConnect = runBot $ do
+    chan <- use (config.channel)
+
+    send $ RawMsg ("JOIN " <> chan)
 
     fork rateLimitTimer
     return ()
 
-handler :: EventHandler BotState
-handler = EventHandler "bot" EPrivmsg $ \event -> do
-    s <- state
-
+handler :: EventHandler IrcEnv
+handler = EventHandler "bot" EPrivmsg $ \event -> runBot $ do
     case event^.message of
-        Privmsg from (Right msg) -> do
+        Privmsg _ (Right msg) -> do
             let parsedCommand = parse command "" msg
             let user = extractUser event
 
             case parsedCommand of
-                Left err -> liftIO (print err)
                 Right cmd -> handleCommand user cmd
+                _ -> return ()
         _ -> return ()
 
     where
@@ -86,7 +89,7 @@ handler = EventHandler "bot" EPrivmsg $ \event -> do
                 Channel _ user -> Just user
                 _ -> Nothing
 
-handleCommand :: Maybe Text -> Command -> StatefulIRC BotState ()
+handleCommand :: Maybe Text -> Command -> Bot ()
 handleCommand user cmd =
     case cmd of
         CmdUnknown -> replyTo user "idk that command :/"
@@ -97,6 +100,6 @@ handleCommand user cmd =
             Just _ -> replyTo target "cya! VoHiYo"
             Nothing -> replyTo user "cya! VoHiYo"
         CmdCommands -> do
-            let msg = Text.concat (intersperse ", " commandList)
+            let commands = Text.concat (intersperse ", " commandList)
             replyTo user ("[arg] means an optional argument, usernames"
-                <> " can be with or without an @ symbol --- " <> msg)
+                <> " can be with or without an @ symbol --- " <> commands)
