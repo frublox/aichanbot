@@ -14,7 +14,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 
 import Text.Parsec
 
-import Network.IRC.Client hiding (send)
+import Network.IRC.Client
 import System.Exit (die)
 
 import Types
@@ -46,15 +46,13 @@ run :: MonadIO io => BotConfig -> io ()
 run botConf = do
     botState <- initBotState botConf
 
-    conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 1
-
+    conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 2
     let conn' = conn { _onconnect = onConnect }
 
     startStateful conn' ircConf botState
 
     where
         ircConf = defaultIRCConf (botConf^.botNick)
-            & nick .~ (botConf^.botNick)
             & password .~ Just (botConf^.pass) 
             & eventHandlers .~ handler : defaultEventHandlers
 
@@ -62,10 +60,12 @@ onConnect :: Bot ()
 onConnect = do
     s <- state
 
+    let nick = s^.config.botNick
     let chan = s^.config.channel
+
+    send $ RawMsg ("NICK " <> nick)
     send $ RawMsg ("JOIN " <> chan)
 
-    fork rateLimitTimer
     return ()
 
 handler :: EventHandler BotState
