@@ -30,3 +30,6 @@ executable twitch
                      , stm
                      , lifted-base
                      , mtl
+                     , containers
+                     , either
+                     , transformers

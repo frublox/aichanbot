@@ -2,21 +2,21 @@
 
 module Wrappers where
 
-import Data.Text (Text)
-import Data.Monoid ((<>))
+import           Data.Monoid               ((<>))
+import           Data.Text                 (Text)
 
-import Control.Lens
-import Control.Concurrent.Lifted (threadDelay)
-import Control.Concurrent.STM
-import Control.Monad.Reader
-import Control.Monad.State hiding (state)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Concurrent.Lifted (threadDelay)
+import           Control.Concurrent.STM
+import           Control.Lens
+import           Control.Monad.IO.Class    (MonadIO, liftIO)
+import           Control.Monad.Reader
+import           Control.Monad.State       hiding (state)
 
-import Network.IRC.Client
-import qualified Network.IRC.Client as Irc
+import           Network.IRC.Client
+import qualified Network.IRC.Client        as Irc
 
-import Types
-import Lifted (readTVarIOL, atomicallyL)
+import           Lifted                    (atomicallyL, readTVarIOL)
+import           Types
 
 privMsg :: Text -> Text -> Bot ()
 privMsg chan msgText = send $ RawMsg ("PRIVMSG " <> chan <> " :" <> msgText)
@@ -34,4 +34,4 @@ replyTo maybeUser msg = do
     where
         msg' = case maybeUser of
             Just user -> "@" <> user <> " " <> msg
-            Nothing -> msg
+            Nothing   -> msg
