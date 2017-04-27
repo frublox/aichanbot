@@ -3,25 +3,25 @@
 
 module Types where
 
-import           Data.Char              (isSpace)
-import           Data.List              (words)
 import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
-import           Data.Text              (Text, pack)
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
 
 import           Control.Concurrent.STM
-import           Control.Lens
+import           Control.Lens           hiding (noneOf)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader
-import           Control.Monad.State    hiding (state)
 
 import           Network.IRC.Client
-import           Text.Parsec            hiding (putState)
-import           Text.Parsec.Text
+import           Text.Megaparsec
+import           Text.Megaparsec.Text
 
 import           Lifted
 
-makeLenses ''InstanceConfig
+makeLensesFor
+    [("_password", "password"), ("_eventHandlers", "eventHandlers")]
+    ''InstanceConfig
 makeLenses ''Event
 makeLenses ''IRCState
 
@@ -46,9 +46,9 @@ initBotState botConf = atomicallyL $ do
     timeLeft' <- newTVar 20
     msgsSent' <- newTVar 0
     msgQueue' <- newTChan
-    dynamicCmds' <- newTVar (Map.empty)
+    dynamicCmds' <- newTVar Map.empty
 
-    return $ BotState
+    return BotState
         { _config = botConf
         , _timeLeft = timeLeft'
         , _msgsSent = msgsSent'
@@ -67,43 +67,60 @@ data Command
     | CmdRemove Text
     | CmdDynamic Text
 
-command :: Parser Command
+command :: ParsecT Dec Text Bot Command
 command = do
     char '!'
-    cmd <- many alphaNum
-    args <- fmap words (manyTill anyChar eof)
+    cmdName <- many alphaNumChar
 
-    case cmd of
-        "commands" -> return CmdCommands
-        "list" -> return CmdCommands
-        "cmds" -> return CmdCommands
+    dynCmd <- (lift . lookupDynCmd . Text.pack) cmdName
 
-        "hi" -> case args of
-            (user:_) -> (return . CmdHi . Just . toText) user
-            _        -> return (CmdHi Nothing)
+    case dynCmd of
+        Just _ -> (return . CmdDynamic . Text.pack) cmdName
+        Nothing -> do
+            args <- space *> many (quotedStr <|> word <* space)
 
-        "bye" -> case args of
-            (user:_) -> (return . CmdBye . Just . toText) user
-            _        -> return (CmdBye Nothing)
+            case cmdName of
+                "commands" -> return CmdCommands
+                "list" -> return CmdCommands
+                "cmds" -> return CmdCommands
 
-        "add" -> case args of
-            (cmdName:cmdText:_) -> return $ CmdAdd (toText cmdName) (toText cmdText)
-            _                   -> parserFail "!add takes two arguments"
+                "hi" -> case args of
+                    (user:_) -> (return . CmdHi . Just . Text.pack . stripAt) user
+                    _        -> return (CmdHi Nothing)
 
-        "remove" -> case args of
-            (cmdName:_) -> return $ CmdRemove (toText cmdName)
-            _           -> parserFail "!remove takes one argument"
+                "bye" -> case args of
+                    (user:_) -> (return . CmdBye . Just . Text.pack . stripAt) user
+                    _        -> return (CmdBye Nothing)
 
-        _ -> return CmdUnknown
+                "add" -> case args of
+                    (name:cmdText:_) -> return $ CmdAdd (Text.pack name) (Text.pack cmdText)
+                    _                   -> fail "!add takes two arguments"
+
+                "remove" -> case args of
+                    (name:_) -> (return . CmdRemove . Text.pack) name
+                    _        -> fail "!remove takes one argument"
+
+                _ -> return CmdUnknown
 
     where
-        toText = pack . stripPrefix
-        stripPrefix s = case s of
+        stripAt s = case s of
             ('@':s') -> s'
             _        -> s
 
+        lookupDynCmd :: Text -> Bot (Maybe Command)
+        lookupDynCmd cmdName = do
+            s <- state
+            cmds <- readTVarIOL (s^.dynamicCmds)
+
+            case Map.lookup cmdName cmds of
+                Nothing -> return Nothing
+                _       -> return $ Just (CmdDynamic cmdName)
+
+quotedStr :: Monad m => ParsecT Dec Text m String
+quotedStr = char '\"' *> many (noneOf ['\"']) <* char '\"'
+
+word :: Monad m => ParsecT Dec Text m String
+word = someTill anyChar (skipSome (oneOf [' ']) <|> eof)
+
 commandName :: Parser Text
-commandName = do
-    char '!'
-    cmd <- many alphaNum
-    return (pack cmd)
+commandName = Text.pack <$> (char '!' *> many alphaNumChar)

@@ -33,3 +33,4 @@ executable twitch
                      , containers
                      , either
                      , transformers
+                     , megaparsec

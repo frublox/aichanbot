@@ -16,7 +16,7 @@ import           Control.Lens
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Trans.Maybe
 
-import           Text.Parsec
+import           Text.Megaparsec
 
 import           Network.IRC.Client
 import           System.Exit               (die)
@@ -25,10 +25,10 @@ import           Lifted
 import           Types
 import           Wrappers
 
-commandList :: [Text]
-commandList =
-    [ "!hi [username]"
-    , "!bye [username]"
+commands :: [Text]
+commands =
+    [ "!hi"
+    , "!bye"
     , "!commands (!list, !cmds)"
     ]
 
@@ -43,9 +43,9 @@ readConfig :: Ini -> Either String BotConfig
 readConfig ini = do
     nick <- lookupValue "config" "nick" ini
     pass <- lookupValue "config" "pass" ini
-    channel <- lookupValue "config" "channel" ini
+    chan <- lookupValue "config" "channel" ini
 
-    return (BotConfig nick pass channel)
+    return (BotConfig nick pass chan)
 
 run :: MonadIO io => BotConfig -> io ()
 run botConf = do
@@ -65,24 +65,22 @@ onConnect :: Bot ()
 onConnect = do
     s <- state
 
-    let nick = s^.config.botNick
+    let nickname = s^.config.botNick
     let chan = s^.config.channel
 
-    send $ RawMsg ("NICK " <> nick)
+    send $ RawMsg ("NICK " <> nickname)
     send $ RawMsg ("JOIN " <> chan)
 
     return ()
 
 msgHandler :: EventHandler BotState
-msgHandler = EventHandler "bot" EPrivmsg $ \event -> do
+msgHandler = EventHandler "bot" EPrivmsg $ \event ->
     case event^.message of
         Privmsg _ (Right msg) -> do
             let user = extractUser event
-            cmd <- runMaybeT (extractCommand msg)
+            cmd <- runParserT command "" msg
 
-            case cmd of
-                Just cmd' -> handleCommand user cmd'
-                Nothing   -> return ()
+            mapM_ (handleCommand user) cmd
 
         _ -> return ()
 
@@ -94,42 +92,29 @@ msgHandler = EventHandler "bot" EPrivmsg $ \event -> do
                 Channel _ user -> Just user
                 _              -> Nothing
 
-        extractCommand :: Text -> MaybeT Bot Command
-        extractCommand msg = do
-            cmdName <- liftMaybe $ rightToMaybe (parse commandName "" msg)
-            let dynamicCmd = fmap liftMaybe (lookupDynCmd cmdName)
-            let parsedCmd = liftMaybe $ rightToMaybe (parse command "" msg)
-
-            dynamicCmd <|> parsedCmd
-
 handleCommand :: Maybe Text -> Command -> Bot ()
 handleCommand user cmd =
     case cmd of
         CmdUnknown -> replyTo user "idk that command :/"
 
         CmdHi target -> case target of
-            Just _  -> replyTo target "hi! VoHiYo"
-            Nothing -> replyTo user "hi! VoHiYo"
+            Just _  -> replyTo target "hi! KonCha"
+            Nothing -> replyTo user "hi! KonCha"
         CmdBye target -> case target of
-            Just _  -> replyTo target "cya! VoHiYo"
-            Nothing -> replyTo user "cya! VoHiYo"
+            Just _  -> replyTo target "cya! KonCha"
+            Nothing -> replyTo user "cya! KonCha"
         CmdCommands -> do
-            let commands = Text.concat (intersperse ", " commandList)
-            replyTo user ("[arg] means an optional argument, usernames"
-                <> " can be with or without an @ symbol --- " <> commands)
+            dynCmds <- fmap (map (cons '!')) getDynCommands
+            let cmdList = (Text.concat . intersperse ", ") (commands <> dynCmds)
+            replyTo user cmdList
 
-        CmdAdd cmdName cmdText -> addCommand cmdName cmdText
-        CmdRemove cmdName -> removeCommand cmdName
+        CmdAdd cmdName cmdText -> do
+            addCommand cmdName cmdText
+            replyTo user ("Added command !" <> cmdName)
+        CmdRemove cmdName -> do
+            removeCommand cmdName
+            replyTo user ("Removed command !" <> cmdName)
         CmdDynamic cmdName -> runDynCommand cmdName
-
-lookupDynCmd :: Text -> Bot (Maybe Command)
-lookupDynCmd cmdName = do
-    s <- state
-    cmds <- readTVarIOL (s^.dynamicCmds)
-
-    case Map.lookup cmdName cmds of
-        Nothing -> return Nothing
-        _       -> return $ Just (CmdDynamic cmdName)
 
 addCommand :: Text -> Text -> Bot ()
 addCommand cmdName cmdText = do
@@ -144,8 +129,13 @@ removeCommand cmdName = do
 runDynCommand :: Text -> Bot ()
 runDynCommand cmdName = do
     s <- state
-    cmds <- readTVarIOL (s^.dynamicCmds)
+    cmdMap <- readTVarIOL (s^.dynamicCmds)
 
-    case Map.lookup cmdName cmds of
-        Nothing      -> return ()
-        Just cmdText -> announce cmdText
+    mapM_ announce (Map.lookup cmdName cmdMap)
+
+getDynCommands :: Bot [Text]
+getDynCommands = do
+    s <- state
+    cmdMap <- readTVarIOL (s^.dynamicCmds)
+
+    return (Map.keys cmdMap)
