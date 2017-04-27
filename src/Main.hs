@@ -2,26 +2,23 @@
 
 module Main where
 
-import           Data.Either.Combinators
 import           Data.Ini
-import           Data.List                 (intersperse)
-import qualified Data.Map.Strict           as Map
-import           Data.Monoid               ((<>))
-import           Data.Text                 (Text)
-import qualified Data.Text                 as Text
+import           Data.List              (intersperse)
+import qualified Data.Map.Strict        as Map
+import           Data.Monoid            ((<>))
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
 
-import           Control.Concurrent.Lifted (fork)
 import           Control.Concurrent.STM
 import           Control.Lens
-import           Control.Monad.IO.Class    (MonadIO, liftIO)
-import           Control.Monad.Trans.Maybe
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 
-import           Text.Megaparsec
+import           Text.Megaparsec        (runParserT)
 
 import           Network.IRC.Client
-import           System.Exit               (die)
+import           System.Exit            (die)
 
-import           Lifted
+import           Lifted                 (atomicallyL, readTVarIOL)
 import           Types
 import           Wrappers
 
@@ -37,18 +34,16 @@ main = do
     ini <- readIniFile "config.ini" >>= either die return
     conf <- either die return (readConfig ini)
 
-    run conf
+    runBot conf
 
 readConfig :: Ini -> Either String BotConfig
-readConfig ini = do
-    nick <- lookupValue "config" "nick" ini
-    pass <- lookupValue "config" "pass" ini
-    chan <- lookupValue "config" "channel" ini
+readConfig ini =
+    BotConfig <$> lookupValue "config" "nick" ini
+        <*> lookupValue "config" "pass" ini
+        <*> lookupValue "config" "channel" ini
 
-    return (BotConfig nick pass chan)
-
-run :: MonadIO io => BotConfig -> io ()
-run botConf = do
+runBot :: MonadIO io => BotConfig -> io ()
+runBot botConf = do
     botState <- initBotState botConf
 
     conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 2
@@ -109,20 +104,20 @@ handleCommand user cmd =
             replyTo user cmdList
 
         CmdAdd cmdName cmdText -> do
-            addCommand cmdName cmdText
+            addDynCommand cmdName cmdText
             replyTo user ("Added command !" <> cmdName)
         CmdRemove cmdName -> do
-            removeCommand cmdName
+            removeDynCommand cmdName
             replyTo user ("Removed command !" <> cmdName)
         CmdDynamic cmdName -> runDynCommand cmdName
 
-addCommand :: Text -> Text -> Bot ()
-addCommand cmdName cmdText = do
+addDynCommand :: Text -> Text -> Bot ()
+addDynCommand cmdName cmdText = do
     s <- state
     atomicallyL $ modifyTVar (s^.dynamicCmds) (Map.insert cmdName cmdText)
 
-removeCommand :: Text -> Bot ()
-removeCommand cmdName = do
+removeDynCommand :: Text -> Bot ()
+removeDynCommand cmdName = do
     s <- state
     atomicallyL $ modifyTVar (s^.dynamicCmds) (Map.delete cmdName)
 

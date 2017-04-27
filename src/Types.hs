@@ -10,7 +10,6 @@ import qualified Data.Text              as Text
 
 import           Control.Concurrent.STM
 import           Control.Lens           hiding (noneOf)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader
 
 import           Network.IRC.Client

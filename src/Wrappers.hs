@@ -2,20 +2,13 @@
 
 module Wrappers where
 
-import           Data.Monoid               ((<>))
-import           Data.Text                 (Text)
+import           Data.Monoid        ((<>))
+import           Data.Text          (Text)
 
-import           Control.Concurrent.Lifted (threadDelay)
-import           Control.Concurrent.STM
 import           Control.Lens
-import           Control.Monad.IO.Class    (MonadIO, liftIO)
-import           Control.Monad.Reader
-import           Control.Monad.State       hiding (state)
 
 import           Network.IRC.Client
-import qualified Network.IRC.Client        as Irc
 
-import           Lifted                    (atomicallyL, readTVarIOL)
 import           Types
 
 privMsg :: Text -> Text -> Bot ()
