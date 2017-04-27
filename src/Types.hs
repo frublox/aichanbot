@@ -33,25 +33,16 @@ makeLenses ''BotConfig
 
 data BotState = BotState
     { _config      :: BotConfig
-    , _timeLeft    :: TVar Int -- Time left in seconds until rate limit resets
-    , _msgsSent    :: TVar Int -- Number of msgs sent since last rate limit reset
-    , _msgQueue    :: TChan UnicodeMessage
     , _dynamicCmds :: TVar (Map Text Text)
     }
 makeLenses ''BotState
 
 initBotState :: MonadIO io => BotConfig -> io BotState
 initBotState botConf = atomicallyL $ do
-    timeLeft' <- newTVar 20
-    msgsSent' <- newTVar 0
-    msgQueue' <- newTChan
     dynamicCmds' <- newTVar Map.empty
 
     return BotState
         { _config = botConf
-        , _timeLeft = timeLeft'
-        , _msgsSent = msgsSent'
-        , _msgQueue = msgQueue'
         , _dynamicCmds = dynamicCmds'
         }
 
