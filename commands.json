@@ -1,26 +1,21 @@
 {
     "hi": {
-        "name": "hi",
         "aliases": [],
         "permissions": "anyone"
     },
     "bye": {
-        "name": "bye",
         "aliases": [],
         "permissions": "anyone"
     },
     "commands": {
-        "name": "commands",
         "aliases": ["list", "cmds"],
         "permissions": "anyone"
     },
     "add": {
-        "name": "add",
         "aliases": [],
         "permissions": "modonly"
     },
     "remove": {
-        "name": "remove",
         "aliases": [],
         "permissions": "modonly"
     }
