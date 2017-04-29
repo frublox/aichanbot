@@ -11,15 +11,18 @@ import qualified Data.Text              as Text
 
 import           Control.Concurrent.STM
 import           Control.Lens
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.IO.Class (MonadIO)
 
 import           Text.Megaparsec        (runParserT)
 
 import           Network.IRC.Client
 import           System.Exit            (die)
 
+import           Bot
+import           Command
+import           CommandParser
+import           IrcLenses
 import           Lifted                 (atomicallyL, readTVarIOL)
-import           Types
 import           Wrappers
 
 commands :: [Text]

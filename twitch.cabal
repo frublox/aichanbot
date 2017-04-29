@@ -16,7 +16,10 @@ extra-source-files:  README.md
 executable twitch
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Types
+  other-modules:       Bot
+                     , Command
+                     , CommandParser
+                     , IrcLenses
                      , Wrappers
                      , Lifted
   default-language:    Haskell2010
@@ -25,7 +28,6 @@ executable twitch
                      , bytestring
                      , text
                      , lens
-                     , parsec
                      , ini
                      , stm
                      , lifted-base
@@ -34,3 +36,4 @@ executable twitch
                      , either
                      , transformers
                      , megaparsec
+                     , aeson

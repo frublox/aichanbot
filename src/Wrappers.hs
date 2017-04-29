@@ -9,7 +9,7 @@ import           Control.Lens
 
 import           Network.IRC.Client
 
-import           Types
+import           Bot
 
 privMsg :: Text -> Text -> Bot ()
 privMsg chan msgText = send $ RawMsg ("PRIVMSG " <> chan <> " :" <> msgText)

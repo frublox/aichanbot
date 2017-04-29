@@ -1,6 +1,6 @@
 module Lifted where
 
-import           Control.Concurrent.STM
+import           Control.Concurrent.STM (STM, TVar, atomically, readTVarIO)
 import           Control.Monad          (MonadPlus, mzero)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 

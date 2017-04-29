@@ -1,61 +1,20 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
+module CommandParser where
 
-module Types where
+import qualified Data.Map.Strict           as Map
+import           Data.Text                 (Text)
+import qualified Data.Text                 as Text
 
-import           Data.Map.Strict        (Map)
-import qualified Data.Map.Strict        as Map
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
+import           Control.Lens              hiding (noneOf)
+import           Control.Monad.Trans.Class
 
-import           Control.Concurrent.STM
-import           Control.Lens           hiding (noneOf)
-import           Control.Monad.Reader
-
-import           Network.IRC.Client
 import           Text.Megaparsec
 import           Text.Megaparsec.Text
 
+import           Network.IRC.Client
+
+import           Bot
+import           Command
 import           Lifted
-
-makeLensesFor
-    [("_password", "password"), ("_eventHandlers", "eventHandlers")]
-    ''InstanceConfig
-makeLenses ''Event
-makeLenses ''IRCState
-
-data BotConfig = BotConfig
-    { _botNick :: Text
-    , _pass    :: Text
-    , _channel :: Text
-    }
-makeLenses ''BotConfig
-
-data BotState = BotState
-    { _config      :: BotConfig
-    , _dynamicCmds :: TVar (Map Text Text)
-    }
-makeLenses ''BotState
-
-initBotState :: MonadIO io => BotConfig -> io BotState
-initBotState botConf = atomicallyL $ do
-    dynamicCmds' <- newTVar Map.empty
-
-    return BotState
-        { _config = botConf
-        , _dynamicCmds = dynamicCmds'
-        }
-
-type Bot = ReaderT (IRCState BotState) IO
-
-data Command
-    = CmdUnknown
-    | CmdCommands
-    | CmdHi (Maybe Text)
-    | CmdBye (Maybe Text)
-    | CmdAdd Text Text
-    | CmdRemove Text
-    | CmdDynamic Text
 
 command :: ParsecT Dec Text Bot Command
 command = do
@@ -106,11 +65,11 @@ command = do
                 Nothing -> return Nothing
                 _       -> return $ Just (CmdDynamic cmdName)
 
-quotedStr :: Monad m => ParsecT Dec Text m String
-quotedStr = char '\"' *> many (noneOf ['\"']) <* char '\"'
+        quotedStr :: Monad m => ParsecT Dec Text m String
+        quotedStr = char '\"' *> many (noneOf ['\"']) <* char '\"'
 
-word :: Monad m => ParsecT Dec Text m String
-word = someTill anyChar (skipSome (oneOf [' ']) <|> eof)
+        word :: Monad m => ParsecT Dec Text m String
+        word = someTill anyChar (skipSome (oneOf [' ']) <|> eof)
 
 commandName :: Parser Text
 commandName = Text.pack <$> (char '!' *> many alphaNumChar)
