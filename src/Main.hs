@@ -25,13 +25,6 @@ import           IrcLenses
 import           Lifted                 (atomicallyL, readTVarIOL)
 import           Wrappers
 
-commands :: [Text]
-commands =
-    [ "!hi"
-    , "!bye"
-    , "!commands (!list, !cmds)"
-    ]
-
 main :: IO ()
 main = do
     ini <- readIniFile "config.ini" >>= either die return
@@ -41,7 +34,8 @@ main = do
 
 readConfig :: Ini -> Either String BotConfig
 readConfig ini =
-    BotConfig <$> lookupValue "config" "nick" ini
+    BotConfig
+        <$> lookupValue "config" "nick" ini
         <*> lookupValue "config" "pass" ini
         <*> lookupValue "config" "channel" ini
 
@@ -102,13 +96,27 @@ handleCommand user cmd =
             Just _  -> replyTo target "cya! KonCha"
             Nothing -> replyTo user "cya! KonCha"
         CmdCommands -> do
+            s <- state
+
             dynCmds <- fmap (map (cons '!')) getDynCommands
+            let commands = map (cons '!') $ Map.keys (s^.staticCmds)
             let cmdList = (Text.concat . intersperse ", ") (commands <> dynCmds)
+
             replyTo user cmdList
 
         CmdAdd cmdName cmdText -> do
-            addDynCommand cmdName cmdText
-            replyTo user ("Added command !" <> cmdName)
+            s <- state
+
+            cmdAliases <- getAliases
+            dynCmds <- getDynCommands
+
+            if Map.member cmdName (s^.staticCmds) || cmdName `elem` cmdAliases || cmdName `elem` dynCmds
+                then
+                    replyTo user ("!" <> cmdName <> " is already the name of an existing command")
+                else do
+                    addDynCommand cmdName cmdText
+                    replyTo user ("Added command !" <> cmdName)
+
         CmdRemove cmdName -> do
             removeDynCommand cmdName
             replyTo user ("Removed command !" <> cmdName)
@@ -137,3 +145,8 @@ getDynCommands = do
     cmdMap <- readTVarIOL (s^.dynamicCmds)
 
     return (Map.keys cmdMap)
+
+getAliases :: Bot [Text]
+getAliases = do
+    s <- state
+    return (concat $ (s^.staticCmds) ^.. traverse . aliases)

@@ -43,7 +43,7 @@ command = do
 
                 "add" -> case args of
                     (name:cmdText:_) -> return $ CmdAdd (Text.pack name) (Text.pack cmdText)
-                    _                   -> fail "!add takes two arguments"
+                    _                -> fail "!add takes two arguments"
 
                 "remove" -> case args of
                     (name:_) -> (return . CmdRemove . Text.pack) name

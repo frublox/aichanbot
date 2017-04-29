@@ -5,7 +5,8 @@
 module Command where
 
 import           Data.Aeson
-import           Data.Text    (Text)
+import           Data.Aeson.TH
+import           Data.Text     (Text)
 import           GHC.Generics
 
 import           Control.Lens
@@ -21,6 +22,10 @@ instance FromJSON CmdPermissions where
             "modonly" -> return PermModOnly
             _         -> fail "Invalid permission"
 
+instance ToJSON CmdPermissions where
+    toJSON PermAnyone  = String "anyone"
+    toJSON PermModOnly = String "modonly"
+
 data Command
     = CmdUnknown
     | CmdCommands
@@ -33,7 +38,7 @@ data Command
 data CommandInfo = CommandInfo
     { _aliases     :: [Text]
     , _permissions :: CmdPermissions
-    } deriving (Generic)
+    }
 makeClassy ''CommandInfo
 
-instance FromJSON CommandInfo
+$(deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''CommandInfo)
