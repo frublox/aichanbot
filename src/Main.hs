@@ -93,11 +93,11 @@ handleCommand user cmd =
     case cmd of
         CmdUnknown -> replyTo user "idk that command :/"
         CmdHi target -> case target of
-            Just _ -> replyTo target "hi! VoHiYo"
-            Nothing -> replyTo user "hi! VoHiYo"
+            Just _ -> replyTo target "hi! KonCha"
+            Nothing -> replyTo user "hi! KonCha"
         CmdBye target -> case target of
-            Just _ -> replyTo target "cya! VoHiYo"
-            Nothing -> replyTo user "cya! VoHiYo"
+            Just _ -> replyTo target "cya! KonCha"
+            Nothing -> replyTo user "cya! KonCha"
         CmdCommands -> do
             let commands = Text.concat (intersperse ", " commandList)
             replyTo user ("[arg] means an optional argument, usernames"
