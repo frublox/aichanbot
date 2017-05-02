@@ -3,76 +3,42 @@
 module Main where
 
 import           Data.Ini
-import           Data.List              (intersperse)
-import qualified Data.Map.Strict        as Map
-import           Data.Monoid            ((<>))
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
-import qualified Data.Text.IO           as Text
+import           Data.Monoid  ((<>))
+import           Data.Text    (Text)
 
-import           Control.Concurrent     (forkIO)
-import           Control.Concurrent.STM
 import           Control.Lens
-import           Control.Monad.IO.Class (MonadIO, liftIO)
 
-import           Text.Megaparsec        (runParserT)
-
-import           Network.IRC.Client
-import           System.Exit            (die)
+import           System.Exit  (die)
 
 import           Bot
-import           Command
-import           CommandParser
-import           IrcLenses
-import           Lifted                 (atomicallyL, readTVarIOL)
-import           Wrappers
+import           Irc
+import           Irc.Parser
 
 main :: IO ()
 main = do
-    (input, output) <- runIrcBot 443 "irc.chat.twitch.tv"
-
-    forkIO (inputLogger input)
-    forkIO (outputLogger input)
-
     ini <- readIniFile "config.ini" >>= either die return
-    botConf <- liftIO (readConfig ini input output)
+    botConfig <- initBotConfig ini >>= either die return
 
-    let botState = initBotState
+    let handlers = [pingHandler, msgHandler]
+    let ircBot = IrcBot botSetup handlers botConfig initBotState
 
-    runBot bot botConf botState
+    runIrcBot 443 "irc.chat.twitch.tv" ircBot
 
--- log messages sent from server to stdout
-outputlogger :: TChan Text -> IO ()
-outputlogger output = forever $ do
-    msg <- atomically (peekTChan output)
-    Text.putStrLn ("> " <> msg)
-
--- log messages sent to server to stdout
-inputLogger :: TChan Text -> IO ()
-inputLogger input = forever $ do
-    msg <- atomically (peekTChan input)
-    Text.putStrLn ("< " <> msg)
-
-contents :: Text -> Text
-contents msg = case Text.splitOn ":" of
-    [] -> ""
-    xs -> xs !! (length xs  - 1)
-
-bot :: Bot ()
-bot = do
+botSetup :: Bot [Text]
+botSetup = do
     pass <- view botPass
     nick <- view botNick
     chan <- view channel
 
-    send ("PASS :" <> pass)
-    send ("NICK :" <> nick)
+    return
+        [ "CAP REQ :twitch.tv/tags"
+        , "PASS :" <> pass
+        , "NICK :" <> nick
+        , "JOIN :" <> chan
+        ]
 
-    send ("JOIN :" <> chan)
-
-send :: Text -> Bot ()
-send msg = do
-    input <- view inputChan
-    atomically (writeTChan input msg)
+msgHandler :: EventHandler
+msgHandler = EventHandler EPrivMsg $ \_ -> return []
 
 -- runBot :: MonadIO io => BotConfig -> io ()
 -- runBot botConf = do

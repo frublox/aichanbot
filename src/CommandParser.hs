@@ -58,8 +58,7 @@ command = do
 
         lookupDynCmd :: Text -> Bot (Maybe Command)
         lookupDynCmd cmdName = do
-            s <- state
-            cmds <- readTVarIOL (s^.dynamicCmds)
+            cmds <- use dynamicCmds
 
             case Map.lookup cmdName cmds of
                 Nothing -> return Nothing
