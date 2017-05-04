@@ -5,6 +5,7 @@ import           Data.List            (all)
 import           Data.Map             (Map)
 import qualified Data.Map             as Map
 import           Data.Text            (Text)
+import qualified Data.Text            as Text
 
 import           Text.Megaparsec
 import           Text.Megaparsec.Text
@@ -40,20 +41,23 @@ ircEvent = do
 twitchTags :: Parser (Map Text [Text])
 twitchTags = do
     char '@'
-    s <- some (noneOf [' '])
-    twitchTags' s
-
-    where
-        twitchTags' = do
-            tags <- some (noneOf [';']) `sepBy` char ';'
-            tags' <- mapM twitchTag tags
-            return (Map.fromList tags')
+    tags <- twitchTag `sepBy` char ';'
+    return (Map.fromList tags)
 
 twitchTag :: Parser (Text, [Text])
 twitchTag = do
     key <- some (noneOf ['='])
     char '='
-    values <- some (noneOf [',']) `sepBy` char ','
-    return (key, values)
+    values <- some (noneOf [',', ' ', ';']) `sepBy` char ','
+    return (Text.pack key, map Text.pack values)
 
+ircMsgText :: Parser Text
+ircMsgText = do
+    msgs <- some (noneOf [':']) `sepBy` char ':'
+    return $ Text.pack (msgs !! (length msgs - 1))
 
+ircMsgSource :: Parser Text
+ircMsgSource = do
+    let src = char ':' *> some (noneOf ['!']) <* char '!'
+    someTill anyChar (try src)
+    Text.pack <$> src

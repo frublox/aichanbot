@@ -3,16 +3,21 @@
 module Main where
 
 import           Data.Ini
-import           Data.Monoid  ((<>))
-import           Data.Text    (Text)
+import           Data.Monoid               ((<>))
+import           Data.Text                 (Text)
 
 import           Control.Lens
+import           Control.Monad.Trans.Maybe
 
-import           System.Exit  (die)
+import           System.Exit               (die)
+
+import           Text.Megaparsec           (parseMaybe)
 
 import           Bot
+import           Command
 import           Irc
-import           Irc.Parser
+import           Lifted                    (liftMaybe)
+import           Util                      (runParserTMaybe)
 
 main :: IO ()
 main = do
@@ -24,13 +29,13 @@ main = do
 
     runIrcBot 443 "irc.chat.twitch.tv" ircBot
 
-botSetup :: Bot [Text]
+botSetup :: Bot ()
 botSetup = do
     pass <- view botPass
     nick <- view botNick
     chan <- view channel
 
-    return
+    mapM_ send
         [ "CAP REQ :twitch.tv/tags"
         , "PASS :" <> pass
         , "NICK :" <> nick
@@ -38,7 +43,21 @@ botSetup = do
         ]
 
 msgHandler :: EventHandler
-msgHandler = EventHandler EPrivMsg $ \_ -> return []
+msgHandler = EventHandler EPrivMsg $ \text -> do
+    thing <- runMaybeT $ do
+        msg <- liftMaybe (parseMaybe ircMsgText text)
+        cmd <- MaybeT (runParserTMaybe command msg)
+        user <- liftMaybe (parseMaybe ircMsgSource text)
+        return (user, cmd)
+
+    mapM_ (uncurry handleCmd) thing
+
+handleCmd :: Text -> Command -> Bot ()
+handleCmd source cmd = case cmd of
+    CmdHi target -> maybe (replyTo source "hi!") (`replyTo` "hi!") target
+    _            -> return ()
+
+
 
 -- runBot :: MonadIO io => BotConfig -> io ()
 -- runBot botConf = do

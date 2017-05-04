@@ -1,4 +1,4 @@
-module CommandParser where
+module Command.Parser where
 
 import qualified Data.Map.Strict           as Map
 import           Data.Text                 (Text)
@@ -10,11 +10,8 @@ import           Control.Monad.Trans.Class
 import           Text.Megaparsec
 import           Text.Megaparsec.Text
 
-import           Network.IRC.Client
-
 import           Bot
-import           Command
-import           Lifted
+import           Command.Types
 
 command :: ParsecT Dec Text Bot Command
 command = do

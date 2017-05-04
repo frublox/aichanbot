@@ -2,6 +2,11 @@
 
 module Irc.Types where
 
+import           Control.Lens
+import           Data.Text
+
+import           Bot
+
 data IrcEvent
     = EPrivMsg
     | ENotice
@@ -19,10 +24,10 @@ data IrcEvent
     | ERawMsg
     deriving (Eq, Show)
 
-data EventHandler = EventHandler IrcEvent (Text -> Bot [Text])
+data EventHandler = EventHandler IrcEvent (Text -> Bot ())
 
 data IrcBot = IrcBot
-    { _onConnect     :: Bot [Text]
+    { _onConnect     :: Bot ()
     , _eventHandlers :: [EventHandler]
     , _ircBotConfig  :: BotConfig
     , _ircBotState   :: BotState
