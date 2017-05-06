@@ -3,24 +3,25 @@
 module Main where
 
 import           Data.Ini
-import           Data.List       (intersperse)
-import           Data.Map.Strict ((!))
-import qualified Data.Map.Strict as Map
-import           Data.Monoid     ((<>))
-import           Data.Text       (Text)
-import qualified Data.Text       as Text
+import           Data.List              (intersperse)
+import           Data.Map.Strict        ((!))
+import qualified Data.Map.Strict        as Map
+import           Data.Monoid            ((<>))
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
 
 import           Control.Lens
-import           Control.Monad   (forM_, when)
+import           Control.Monad          (forM_, when)
+import           Control.Monad.IO.Class (liftIO)
 
-import           System.Exit     (die)
+import           System.Exit            (die)
 
-import           Text.Megaparsec (parse, runParserT)
+import           Text.Megaparsec        (parse, runParserT)
 
 import           Bot
 import           Command
 import           Irc
-import           Util            (textContains)
+import           Util                   (textContains)
 
 main :: IO ()
 main = do
@@ -60,11 +61,13 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
                     replyTo source (responseStrs ! key)
 
             cmd <- runParserT command "" text
-            mapM_ (handleCmd source) cmd
+            perms <- getPermissions ircMsg
+
+            mapM_ (handleCmd source perms) cmd
         _ -> return ()
 
-handleCmd :: Text -> Command -> Bot ()
-handleCmd source cmd = case cmd of
+handleCmd :: Text -> CmdPermissions -> Command -> Bot ()
+handleCmd source perms cmd = case cmd of
     CmdHi target  -> do
         msg <- views (botData . strings) (! "hi")
         maybe (replyTo source msg) (`replyTo` msg) target
@@ -79,14 +82,14 @@ handleCmd source cmd = case cmd of
         let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
         replyTo source (Text.concat $ intersperse ", " cmds)
 
-    CmdAdd cmdName cmdText -> do
+    CmdAdd cmdName cmdText -> when (perms == PermModOnly) $ do
         dynamicCmds %= Map.insert cmdName cmdText
         msg <- views (botData . strings) (! "add")
         replyTo source (msg <> cmdName)
 
         saveDynCmds
 
-    CmdRemove cmdName -> do
+    CmdRemove cmdName -> when (perms == PermModOnly) $ do
         dynamicCmds %= Map.delete cmdName
         msg <- views (botData . strings) (! "remove")
         replyTo source (msg <> cmdName)

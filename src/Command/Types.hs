@@ -13,6 +13,7 @@ import           Control.Lens
 data CmdPermissions
     = PermAnyone
     | PermModOnly
+    deriving (Show, Eq)
 
 instance FromJSON CmdPermissions where
     parseJSON = withText "Permission" $ \val ->
@@ -33,6 +34,7 @@ data Command
     | CmdAdd Text Text
     | CmdRemove Text
     | CmdDynamic Text
+    deriving (Show, Eq)
 
 data CommandInfo = CommandInfo
     { _aliases     :: [Text]
