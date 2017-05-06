@@ -37,8 +37,8 @@ handler handlers = awaitForever $ \msg -> do
     either (liftIO . die . parseErrorPretty) (runHandlers msg) event
 
     output <- lift (view outputChan)
-    responses <- atomicallyL (readAllTChan output)
-    yieldMany responses
+    replies <- atomicallyL (readAllTChan output)
+    yieldMany replies
 
     where
         runHandlers msg event = forM_ handlers (handleEvent event msg)

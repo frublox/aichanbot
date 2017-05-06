@@ -3,25 +3,24 @@
 module Main where
 
 import           Data.Ini
-import           Data.List              (intersperse)
-import           Data.Map.Strict        ((!))
-import qualified Data.Map.Strict        as Map
-import           Data.Monoid            ((<>))
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
+import           Data.List       (intersperse)
+import           Data.Map.Strict ((!))
+import qualified Data.Map.Strict as Map
+import           Data.Monoid     ((<>))
+import           Data.Text       (Text)
+import qualified Data.Text       as Text
 
 import           Control.Lens
-import           Control.Monad          (forM_, when)
-import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad   (forM_, when)
 
-import           System.Exit            (die)
+import           System.Exit     (die)
 
-import           Text.Megaparsec        (parse, runParserT)
+import           Text.Megaparsec (parse, runParserT)
 
 import           Bot
 import           Command
 import           Irc
-import           Util                   (textContains)
+import           Util            (textContains)
 
 main :: IO ()
 main = do
