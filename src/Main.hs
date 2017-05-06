@@ -68,7 +68,6 @@ handleCmd :: Text -> Command -> Bot ()
 handleCmd source cmd = case cmd of
     CmdHi target  -> do
         msg <- views (botData . strings) (! "hi")
-        liftIO $ print msg
         maybe (replyTo source msg) (`replyTo` msg) target
 
     CmdBye target -> do
