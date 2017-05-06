@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Command.Parser where
 
 import qualified Data.Map.Strict           as Map
@@ -30,6 +32,14 @@ command = do
                 "list" -> return CmdCommands
                 "cmds" -> return CmdCommands
 
+                "help" -> case args of
+                    (cmd:_) -> (return . CmdHelp . Text.pack) cmd
+                    _       -> return (CmdError "help" "!help takes one argument")
+
+                "aliases" -> case args of
+                    (cmd:_) -> (return . CmdAliases . Text.pack) cmd
+                    _ -> return (CmdError "aliases" "!aliases takes one argument")
+
                 "hi" -> case args of
                     (user:_) -> (return . CmdHi . Just . Text.pack . stripAt) user
                     _        -> return (CmdHi Nothing)
@@ -40,11 +50,10 @@ command = do
 
                 "add" -> case args of
                     (name:cmdText:_) -> return $ CmdAdd (Text.pack name) (Text.pack cmdText)
-                    _                -> fail "!add takes two arguments"
-
+                    _                -> return (CmdError "add" "!add takes two arguments")
                 "remove" -> case args of
                     (name:_) -> (return . CmdRemove . Text.pack) name
-                    _        -> fail "!remove takes one argument"
+                    _        -> return (CmdError "remove" "!remove takes one argument")
 
                 _ -> return CmdUnknown
 

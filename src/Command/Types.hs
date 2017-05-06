@@ -28,12 +28,15 @@ instance ToJSON CmdPermissions where
 
 data Command
     = CmdUnknown
+    | CmdError Text Text
     | CmdCommands
     | CmdHi (Maybe Text)
     | CmdBye (Maybe Text)
     | CmdAdd Text Text
     | CmdRemove Text
     | CmdDynamic Text
+    | CmdHelp Text
+    | CmdAliases Text
     deriving (Show, Eq)
 
 data CommandInfo = CommandInfo

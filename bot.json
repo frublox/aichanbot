@@ -29,6 +29,11 @@
             "aliases": [],
             "permissions": "anyone",
             "help": "Usage: !help <command>"
+        },
+        "aliases": {
+            "aliases": [],
+            "permissions": "anyone",
+            "help": "Usage: !aliases <command>"
         }
     },
     "strings": {

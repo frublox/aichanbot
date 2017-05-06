@@ -68,6 +68,22 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
 
 handleCmd :: Text -> CmdPermissions -> Command -> Bot ()
 handleCmd source perms cmd = case cmd of
+    CmdError cmdName err -> replyTo source (err <> ". Try !help " <> cmdName)
+
+    CmdAliases cmdName -> do
+        maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
+        case maybeCmdInfo of
+            Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
+            Just cmdInfo ->
+                replyTo source . Text.concat . intersperse "," . map (Text.cons '!') $
+                    (cmdInfo^.aliases)
+
+    CmdHelp cmdName -> do
+        maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
+        case maybeCmdInfo of
+            Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
+            Just cmdInfo -> replyTo source (cmdInfo^.help)
+
     CmdHi target  -> do
         msg <- views (botData . strings) (! "hi")
         maybe (replyTo source msg) (`replyTo` msg) target
