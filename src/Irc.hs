@@ -21,6 +21,7 @@ import           Control.Monad
 import           Control.Monad.IO.Class    (liftIO)
 import           Control.Monad.Trans.Class (lift)
 
+import           System.Exit               (die)
 import           Text.Megaparsec
 
 import           Bot
@@ -31,20 +32,18 @@ import           Util                      (readAllTChan)
 
 handler :: [EventHandler] -> Conduit Text Bot Text
 handler handlers = awaitForever $ \msg -> do
-    let event = parseMaybe ircEvent msg
+    let event = parse ircEvent "" msg
 
-    maybe (err msg) (runHandlers msg) event
+    either (liftIO . die . parseErrorPretty) (runHandlers msg) event
 
     output <- lift (view outputChan)
     responses <- atomicallyL (readAllTChan output)
-    liftIO $ print responses
     yieldMany responses
 
     where
-        err msg = liftIO $ Text.putStrLn ("Badly formatted message from server: " <> msg)
-
         runHandlers msg event = forM_ handlers (handleEvent event msg)
-        handleEvent event msg (EventHandler e f) = when (e == event) $ lift (f msg)
+        handleEvent event msg (EventHandler e f) =
+            when (e == event) $ lift (f msg)
 
 pingHandler :: EventHandler
 pingHandler = EventHandler EPing $ \msg ->
@@ -56,12 +55,13 @@ formatter = awaitForever $ \msg ->
 
 serverLogger :: Conduit Text Bot Text
 serverLogger = awaitForever $ \msg -> do
-    liftIO $ Text.putStrLn ("> " <> msg)
+    let msg' = Text.replace "\n" "\n--> " msg
+    liftIO $ Text.putStrLn ("--> " <> msg')
     yield msg
 
 clientLogger :: Conduit Text Bot Text
 clientLogger = awaitForever $ \msg -> do
-    liftIO $ Text.putStrLn ("< " <> msg)
+    liftIO $ Text.putStrLn ("<-- " <> msg)
     yield msg
 
 onConnectC :: Bot () -> Conduit Text Bot Text

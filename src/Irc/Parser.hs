@@ -14,11 +14,13 @@ import           Irc.Types
 
 ircEvent :: Parser IrcEvent
 ircEvent = do
-    skipMany (char ':')
-    char ':'
-    skipMany spaceChar
+    skipMany twitchTags
     space
+    skipSome (noneOf [' '])
+    space
+
     event <- manyTill alphaNumChar spaceChar
+
     case event of
         "PRIVMSG" -> return EPrivMsg
         "NOTICE" -> return ENotice
@@ -48,7 +50,7 @@ twitchTag :: Parser (Text, [Text])
 twitchTag = do
     key <- some (noneOf ['='])
     char '='
-    values <- some (noneOf [',', ' ', ';']) `sepBy` char ','
+    values <- many (noneOf [',', ' ', ';']) `sepBy` char ','
     return (Text.pack key, map Text.pack values)
 
 ircMsgText :: Parser Text
@@ -59,5 +61,5 @@ ircMsgText = do
 ircMsgSource :: Parser Text
 ircMsgSource = do
     let src = char ':' *> some (noneOf ['!']) <* char '!'
-    someTill anyChar (try src)
+    someTill anyChar (lookAhead src)
     Text.pack <$> src

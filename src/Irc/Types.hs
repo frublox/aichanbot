@@ -5,7 +5,7 @@ module Irc.Types where
 import           Control.Lens
 import           Data.Text
 
-import           Bot
+import           Bot.Types
 
 data IrcEvent
     = EPrivMsg

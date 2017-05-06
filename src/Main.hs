@@ -3,21 +3,22 @@
 module Main where
 
 import           Data.Ini
-import           Data.Monoid               ((<>))
-import           Data.Text                 (Text)
+import           Data.Monoid                ((<>))
+import           Data.Text                  (Text)
 
 import           Control.Lens
-import           Control.Monad.Trans.Maybe
+import           Control.Monad.IO.Class     (liftIO)
+import           Control.Monad.Trans.Class  (lift)
+import           Control.Monad.Trans.Either
 
-import           System.Exit               (die)
+import           System.Exit                (die)
 
-import           Text.Megaparsec           (parseMaybe)
+import           Text.Megaparsec            (parse, parseErrorPretty,
+                                             parseMaybe, runParserT)
 
 import           Bot
 import           Command
 import           Irc
-import           Lifted                    (liftMaybe)
-import           Util                      (runParserTMaybe)
 
 main :: IO ()
 main = do
@@ -27,30 +28,27 @@ main = do
     let handlers = [pingHandler, msgHandler]
     let ircBot = IrcBot botSetup handlers botConfig initBotState
 
-    runIrcBot 443 "irc.chat.twitch.tv" ircBot
+    runIrcBot 6667 "irc.chat.twitch.tv" ircBot
 
-botSetup :: Bot ()
+botSetup :: Bot ();
 botSetup = do
     pass <- view botPass
     nick <- view botNick
     chan <- view channel
 
-    mapM_ send
-        [ "CAP REQ :twitch.tv/tags"
-        , "PASS :" <> pass
-        , "NICK :" <> nick
-        , "JOIN :" <> chan
-        ]
+    send "CAP REQ :twitch.tv/tags"
+    send ("PASS :" <> pass)
+    send ("NICK :" <> nick)
+    send ("JOIN :" <> chan)
 
 msgHandler :: EventHandler
-msgHandler = EventHandler EPrivMsg $ \text -> do
-    thing <- runMaybeT $ do
-        msg <- liftMaybe (parseMaybe ircMsgText text)
-        cmd <- MaybeT (runParserTMaybe command msg)
-        user <- liftMaybe (parseMaybe ircMsgSource text)
-        return (user, cmd)
+msgHandler = EventHandler EPrivMsg $ \ircMsg ->
+    eitherT (liftIO . die . parseErrorPretty) return $ do
+        source <- hoistEither (parse ircMsgSource "" ircMsg)
+        text <- hoistEither (parse ircMsgText "" ircMsg)
+        cmd <- EitherT (runParserT command "" text)
 
-    mapM_ (uncurry handleCmd) thing
+        lift (handleCmd source cmd)
 
 handleCmd :: Text -> Command -> Bot ()
 handleCmd source cmd = case cmd of

@@ -1,7 +1,6 @@
 module Util where
 
 import           Control.Concurrent.STM
-import           Data.Monoid            ((<>))
 import           Text.Megaparsec
 
 readAllTChan :: TChan a -> STM [a]
@@ -11,7 +10,7 @@ readAllTChan chan = do
         Nothing -> return []
         Just x  -> do
             rest <- readAllTChan chan
-            return (rest <> [x])
+            return (x : rest)
 
 runParserTMaybe :: Monad m => ParsecT e s m a -> s -> m (Maybe a)
 runParserTMaybe p s = do
