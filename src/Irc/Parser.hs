@@ -55,8 +55,13 @@ twitchTag = do
 
 ircMsgText :: Parser Text
 ircMsgText = do
-    msgs <- some (noneOf [':']) `sepBy` char ':'
-    return $ Text.pack (msgs !! (length msgs - 1))
+    manyTill anyChar (try (string "PRIVMSG"))
+    space
+    manyTill (noneOf [' ']) spaceChar
+    space
+    char ':'
+    msg <- manyTill anyChar eof
+    return (Text.pack msg)
 
 ircMsgSource :: Parser Text
 ircMsgSource = do
