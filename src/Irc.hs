@@ -47,7 +47,7 @@ handler handlers = awaitForever $ \msg -> do
 
 newlineStripper :: Conduit Text Bot Text
 newlineStripper = awaitForever $ \msg -> do
-    let msg' = Text.replace "\r\n" "" msg
+    let msg' = Text.dropEnd 2 msg
     yield msg'
 
 newlineAdder :: Conduit Text Bot Text
