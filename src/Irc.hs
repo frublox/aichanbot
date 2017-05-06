@@ -50,8 +50,8 @@ newlineStripper = awaitForever $ \msg -> do
     let msg' = Text.replace "\r\n" "" msg
     yield msg'
 
-formatter :: Conduit Text Bot Text
-formatter = awaitForever $ \msg ->
+newlineAdder :: Conduit Text Bot Text
+newlineAdder = awaitForever $ \msg ->
     yield (msg <> "\r\n")
 
 serverLogger :: Conduit Text Bot Text
@@ -86,6 +86,6 @@ runIrcBot port host ircBot = runTCPClient (clientSettings port host) app
                     .| handler (ircBot^.eventHandlers)
                     .| onConnectC (ircBot^.onConnect)
                     .| clientLogger
-                    .| formatter
+                    .| newlineAdder
                     .| encodeUtf8C
                     .| appSink ad
