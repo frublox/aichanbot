@@ -16,32 +16,17 @@ extra-source-files:  README.md
 executable twitch
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Bot
-                     , Bot.Types
-                     , Bot.Actions
-                     , Command
-                     , Command.Parser
-                     , Command.Types
+  other-modules:       Types
+                     , Wrappers
                      , Lifted
-                     , Irc
-                     , Irc.Parser
-                     , Irc.Types
-                     , Util
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , irc-client
                      , bytestring
                      , text
                      , lens
+                     , parsec
                      , ini
                      , stm
                      , lifted-base
                      , mtl
-                     , containers
-                     , either
-                     , transformers
-                     , megaparsec
-                     , aeson
-                     , conduit-combinators
-                     , conduit-extra
-                     , exceptions

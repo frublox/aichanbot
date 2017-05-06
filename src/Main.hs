@@ -3,176 +3,111 @@
 module Main where
 
 import           Data.Ini
-import           Data.Map.Strict            ((!))
-import           Data.Monoid                ((<>))
-import           Data.Text                  (Text)
+import           Data.List                 (intersperse)
+import           Data.Monoid               ((<>))
+import           Data.Text                 (Text)
+import qualified Data.Text                 as Text
 
+import           Control.Concurrent.Lifted (fork)
 import           Control.Lens
-import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad.Trans.Class  (lift)
-import           Control.Monad.Trans.Either
+import           Control.Monad             (when)
+import           Control.Monad.IO.Class    (MonadIO, liftIO)
 
-import           System.Exit                (die)
+import           Text.Parsec
 
-import           Text.Megaparsec            (parse, parseErrorPretty,
-                                             runParserT)
+import           Network.IRC.Client
+import           System.Exit               (die)
 
-import           Bot
-import           Command
-import           Irc
+import           Types
+import           Wrappers
+
+commandList :: [Text]
+commandList =
+    [ "!hi [username]"
+    , "!bye [username]"
+    , "!commands (!list, !cmds)"
+    ]
 
 main :: IO ()
 main = do
     ini <- readIniFile "config.ini" >>= either die return
-    botConfig <- initBotConfig ini >>= either die return
+    conf <- either die return (readConfig ini)
 
-    let handlers = [pingHandler, msgHandler]
-    let ircBot = IrcBot botSetup handlers botConfig initBotState
+    run conf
 
-    runIrcBot 6667 "irc.chat.twitch.tv" ircBot
+readConfig :: Ini -> Either String BotConfig
+readConfig ini = do
+    nick <- lookupValue "config" "nick" ini
+    pass <- lookupValue "config" "pass" ini
+    channel <- lookupValue "config" "channel" ini
 
-botSetup :: Bot ();
-botSetup = do
-    pass <- view botPass
-    nick <- view botNick
-    chan <- view channel
+    return (BotConfig nick pass channel)
 
-    send "CAP REQ :twitch.tv/tags"
-    send ("PASS :" <> pass)
-    send ("NICK :" <> nick)
-    send ("JOIN :" <> chan)
+run :: MonadIO io => BotConfig -> io ()
+run botConf = do
+    botState <- initBotState botConf
 
-msgHandler :: EventHandler
-msgHandler = EventHandler EPrivMsg $ \ircMsg ->
-    eitherT (liftIO . die . parseErrorPretty) return $ do
-        source <- hoistEither (parse ircMsgSource "" ircMsg)
-        text <- hoistEither (parse ircMsgText "" ircMsg)
-        cmd <- EitherT (runParserT command "" text)
+    conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 2
+    let conn' = conn { _onconnect = onConnect }
 
-        lift (handleCmd source cmd)
+    startStateful conn' ircConf botState
 
-handleCmd :: Text -> Command -> Bot ()
-handleCmd source cmd = case cmd of
-    CmdHi target  -> do
-        msg <- views (botData . strings) (! "hi")
-        maybe (replyTo source msg) (`replyTo` msg) target
-    CmdBye target -> do
-        msg <- views (botData . strings) (! "bye")
-        maybe (replyTo source msg) (`replyTo` msg) target
-    _             -> return ()
+    where
+        ircConf = defaultIRCConf (botConf^.botNick)
+            & password .~ Just (botConf^.pass)
+            & eventHandlers .~ handler : defaultEventHandlers
 
+onConnect :: Bot ()
+onConnect = do
+    s <- state
 
+    let nick = s^.config.botNick
+    let chan = s^.config.channel
 
--- runBot :: MonadIO io => BotConfig -> io ()
--- runBot botConf = do
---     botState <- initBotState botConf
+    send $ RawMsg ("NICK " <> nick)
+    send $ RawMsg ("JOIN " <> chan)
 
---     conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 2
---     let conn' = conn { _onconnect = onConnect }
+    return ()
 
---     startStateful conn' ircConf botState
+handler :: EventHandler BotState
+handler = EventHandler "bot" EPrivmsg $ \event ->
+    case event^.message of
+        Privmsg _ (Right msg) -> do
+            let parsedCommand = parse command "" msg
+            let user = extractUser event
 
---     where
---         ircConf = defaultIRCConf (botConf^.botNick)
---             & eventHandlers .~ msgHandler : defaultEventHandlers
+            mapM_ (handleCommand user) parsedCommand
 
--- onConnect :: Bot ()
--- onConnect = do
---     s <- state
+            when ("KonCha" `isSubStrOf` msg) $
+                replyTo user "L-lewd!"
 
---     let nickname = s^.config.botNick
---     let chan = s^.config.channel
+        _ -> return ()
 
---     send $ RawMsg ("PASS " <> s^.config.pass)
---     send (Nick nickname)
---     send $ RawMsg "CAP REQ :twitch.tv/tags"
---     send (Join chan)
+    where
+        extractUser :: Event Text -> Maybe Text
+        extractUser event =
+            case event^.source of
+                User user      -> Just user
+                Channel _ user -> Just user
+                _              -> Nothing
 
---     return ()
+        isSubStrOf :: Text -> Text -> Bool
+        isSubStrOf x y =
+            case Text.breakOn x y of
+                (_, "") -> False
+                _       -> True
 
--- msgHandler :: EventHandler BotState
--- msgHandler = EventHandler "bot" EEverything $ \event -> do
---     liftIO $ print (event^.raw)
---     case event^.message of
---         Privmsg _ (Right msg) -> do
---             let user = extractUser event
---             cmd <- runParserT command "" msg
-
---             mapM_ (handleCommand user) cmd
-
---         _ -> return ()
-
---     where
---         extractUser :: Event Text -> Maybe Text
---         extractUser event =
---             case event^.source of
---                 User user      -> Just user
---                 Channel _ user -> Just user
---                 _              -> Nothing
-
--- handleCommand :: Maybe Text -> Command -> Bot ()
--- handleCommand user cmd =
---     case cmd of
---         CmdUnknown -> replyTo user "idk that command :/"
-
---         CmdHi target -> case target of
---             Just _  -> replyTo target "hi! KonCha"
---             Nothing -> replyTo user "hi! KonCha"
---         CmdBye target -> case target of
---             Just _  -> replyTo target "cya! KonCha"
---             Nothing -> replyTo user "cya! KonCha"
---         CmdCommands -> do
---             s <- state
-
---             dynCmds <- fmap (map (cons '!')) getDynCommands
---             let commands = map (cons '!') $ Map.keys (s^.staticCmds)
---             let cmdList = (Text.concat . intersperse ", ") (commands <> dynCmds)
-
---             replyTo user cmdList
-
---         CmdAdd cmdName cmdText -> do
---             s <- state
-
---             cmdAliases <- getAliases
---             dynCmds <- getDynCommands
-
---             if Map.member cmdName (s^.staticCmds) || cmdName `elem` cmdAliases || cmdName `elem` dynCmds
---                 then
---                     replyTo user ("!" <> cmdName <> " is already the name of an existing command")
---                 else do
---                     addDynCommand cmdName cmdText
---                     replyTo user ("Added command !" <> cmdName)
-
---         CmdRemove cmdName -> do
---             removeDynCommand cmdName
---             replyTo user ("Removed command !" <> cmdName)
---         CmdDynamic cmdName -> runDynCommand cmdName
-
--- addDynCommand :: Text -> Text -> Bot ()
--- addDynCommand cmdName cmdText = do
---     s <- state
---     atomicallyL $ modifyTVar (s^.dynamicCmds) (Map.insert cmdName cmdText)
-
--- removeDynCommand :: Text -> Bot ()
--- removeDynCommand cmdName = do
---     s <- state
---     atomicallyL $ modifyTVar (s^.dynamicCmds) (Map.delete cmdName)
-
--- runDynCommand :: Text -> Bot ()
--- runDynCommand cmdName = do
---     s <- state
---     cmdMap <- readTVarIOL (s^.dynamicCmds)
-
---     mapM_ announce (Map.lookup cmdName cmdMap)
-
--- getDynCommands :: Bot [Text]
--- getDynCommands = do
---     s <- state
---     cmdMap <- readTVarIOL (s^.dynamicCmds)
-
---     return (Map.keys cmdMap)
-
--- getAliases :: Bot [Text]
--- getAliases = do
---     s <- state
---     return (concat $ (s^.staticCmds) ^.. traverse . aliases)
+handleCommand :: Maybe Text -> Command -> Bot ()
+handleCommand user cmd =
+    case cmd of
+        CmdUnknown -> replyTo user "idk that command :/"
+        CmdHi target -> case target of
+            Just _  -> replyTo target "hi! KonCha"
+            Nothing -> replyTo user "hi! KonCha"
+        CmdBye target -> case target of
+            Just _  -> replyTo target "cya! KonCha"
+            Nothing -> replyTo user "cya! KonCha"
+        CmdCommands -> do
+            let commands = Text.concat (intersperse ", " commandList)
+            replyTo user ("[arg] means an optional argument, usernames"
+                <> " can be with or without an @ symbol --- " <> commands)
