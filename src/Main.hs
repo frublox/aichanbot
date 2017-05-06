@@ -3,6 +3,7 @@
 module Main where
 
 import           Data.Ini
+import           Data.Map.Strict            ((!))
 import           Data.Monoid                ((<>))
 import           Data.Text                  (Text)
 
@@ -14,7 +15,7 @@ import           Control.Monad.Trans.Either
 import           System.Exit                (die)
 
 import           Text.Megaparsec            (parse, parseErrorPretty,
-                                             parseMaybe, runParserT)
+                                             runParserT)
 
 import           Bot
 import           Command
@@ -52,8 +53,13 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg ->
 
 handleCmd :: Text -> Command -> Bot ()
 handleCmd source cmd = case cmd of
-    CmdHi target -> maybe (replyTo source "hi!") (`replyTo` "hi!") target
-    _            -> return ()
+    CmdHi target  -> do
+        msg <- views (botData . strings) (! "hi")
+        maybe (replyTo source msg) (`replyTo` msg) target
+    CmdBye target -> do
+        msg <- views (botData . strings) (! "bye")
+        maybe (replyTo source msg) (`replyTo` msg) target
+    _             -> return ()
 
 
 

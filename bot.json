@@ -1,0 +1,41 @@
+{
+    "commands": {
+        "hi": {
+            "aliases": [],
+            "permissions": "anyone",
+            "help": "Usage: !hi [optional username, w/ or w/out @]"
+        },
+        "bye": {
+            "aliases": [],
+            "permissions": "anyone",
+            "help": "Usage: !bye [optional username, w/ or w/out @]"
+        },
+        "commands": {
+            "aliases": ["list", "cmds"],
+            "permissions": "anyone",
+            "help": "Usage: !commands"
+        },
+        "add": {
+            "aliases": [],
+            "permissions": "modonly",
+            "help": "Usage: [mods only] !add <command> <command text>"
+        },
+        "remove": {
+            "aliases": [],
+            "permissions": "modonly",
+            "help": "Usage: [mods only] !remove <command to remove>"
+        },
+        "help": {
+            "aliases": [],
+            "permissions": "anyone",
+            "help": "Usage: !help <command>"
+        }
+    },
+    "strings": {
+        "hi": "hi! KonCha",
+        "bye": "cya! TehePelo"
+    },
+    "responses": {
+        "KonCha": "L-lewd!"
+    }
+}

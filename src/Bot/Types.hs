@@ -5,6 +5,7 @@
 module Bot.Types where
 
 import           Data.Aeson
+import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy   as BytesL
 import           Data.Ini
 import           Data.Map.Strict        (Map)
@@ -21,20 +22,28 @@ import           Control.Monad.State
 import           Command.Types          (CommandInfo)
 import           Lifted                 (atomicallyL)
 
+data BotData = BotData
+    { _commands  :: Map Text CommandInfo
+    , _strings   :: Map Text Text
+    , _responses :: Map Text Text
+    }
+makeLenses ''BotData
+
+$(deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''BotData)
 
 data BotConfig = BotConfig
     { _botNick    :: Text
     , _botPass    :: Text
     , _channel    :: Text
-    , _staticCmds :: Map Text CommandInfo
     , _outputChan :: TChan Text
+    , _botData    :: BotData
     }
 makeLenses ''BotConfig
 
 initBotConfig :: MonadIO io => Ini -> io (Either String BotConfig)
 initBotConfig ini = do
-    staticCmds' <- liftIO $ do
-        bytes <- BytesL.readFile "commands.json"
+    botData' <- liftIO $ do
+        bytes <- BytesL.readFile "bot.json"
         return (eitherDecode bytes)
 
     outputChan' <- Right <$> atomicallyL newTChan
@@ -43,8 +52,8 @@ initBotConfig ini = do
         <$> lookupValue "config" "nick" ini
         <*> lookupValue "config" "pass" ini
         <*> lookupValue "config" "channel" ini
-        <*> staticCmds'
         <*> outputChan'
+        <*> botData'
 
 newtype BotState = BotState
     { _dynamicCmds :: Map Text Text

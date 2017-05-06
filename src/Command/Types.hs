@@ -37,6 +37,7 @@ data Command
 data CommandInfo = CommandInfo
     { _aliases     :: [Text]
     , _permissions :: CmdPermissions
+    , _help        :: Text
     }
 makeClassy ''CommandInfo
 
