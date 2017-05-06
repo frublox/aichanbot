@@ -25,7 +25,6 @@ privMsg :: Text -> Bot ()
 privMsg msg = do
     chan <- view channel
     let ircMsg = "PRIVMSG " <> chan <> " :" <> msg
-    liftIO $ print ircMsg
     send ircMsg
 
 replyTo :: Text -> Text -> Bot ()

@@ -32,10 +32,9 @@ import           Util                      (readAllTChan)
 
 handler :: [EventHandler] -> Conduit Text Bot Text
 handler handlers = awaitForever $ \msg -> do
-    let msg' = Text.replace "\r\n" "" msg
-    let event = parse ircEvent "" msg'
+    let event = parse ircEvent "" msg
 
-    either (liftIO . die . parseErrorPretty) (runHandlers msg') event
+    either (liftIO . die . parseErrorPretty) (runHandlers msg) event
 
     output <- lift (view outputChan)
     responses <- atomicallyL (readAllTChan output)
@@ -49,6 +48,11 @@ handler handlers = awaitForever $ \msg -> do
 pingHandler :: EventHandler
 pingHandler = EventHandler EPing $ \msg ->
     send ("PONG :" <> Text.drop 6 msg)
+
+newlineStripper :: Conduit Text Bot Text
+newlineStripper = awaitForever $ \msg -> do
+    let msg' = Text.replace "\r\n" "" msg
+    yield msg'
 
 formatter :: Conduit Text Bot Text
 formatter = awaitForever $ \msg ->
@@ -81,6 +85,7 @@ runIrcBot port host ircBot = runTCPClient (clientSettings port host) app
                 bot = runConduit $
                     appSource ad
                     .| decodeUtf8C
+                    .| newlineStripper
                     .| serverLogger
                     .| handler (ircBot^.eventHandlers)
                     .| onConnectC (ircBot^.onConnect)
