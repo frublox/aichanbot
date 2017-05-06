@@ -16,9 +16,9 @@ ircEvent :: Parser IrcEvent
 ircEvent = do
     skipMany twitchTags
     space
-    skipSome (noneOf [' '])
+    let src = char ':' *> some (noneOf [' ']) <* spaceChar
+    skipMany src
     space
-
     event <- manyTill alphaNumChar spaceChar
 
     case event of
@@ -60,7 +60,7 @@ ircMsgText = do
 
 ircMsgSource :: Parser Text
 ircMsgSource = do
-    twitchTags
+    skipMany twitchTags
     let src = char ':' *> some (noneOf ['!']) <* char '!'
     someTill anyChar (lookAhead src)
     Text.pack <$> src
