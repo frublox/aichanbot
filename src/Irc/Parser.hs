@@ -60,6 +60,7 @@ ircMsgText = do
 
 ircMsgSource :: Parser Text
 ircMsgSource = do
+    twitchTags
     let src = char ':' *> some (noneOf ['!']) <* char '!'
     someTill anyChar (lookAhead src)
     Text.pack <$> src
