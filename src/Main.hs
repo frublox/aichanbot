@@ -3,9 +3,12 @@
 module Main where
 
 import           Data.Ini
+import           Data.List                  (intersperse)
 import           Data.Map.Strict            ((!))
+import qualified Data.Map.Strict            as Map
 import           Data.Monoid                ((<>))
 import           Data.Text                  (Text)
+import qualified Data.Text                  as Text
 
 import           Control.Lens
 import           Control.Monad.IO.Class     (liftIO)
@@ -55,26 +58,30 @@ handleCmd :: Text -> Command -> Bot ()
 handleCmd source cmd = case cmd of
     CmdHi target  -> do
         msg <- views (botData . strings) (! "hi")
+        liftIO $ print msg
         maybe (replyTo source msg) (`replyTo` msg) target
     CmdBye target -> do
         msg <- views (botData . strings) (! "bye")
         maybe (replyTo source msg) (`replyTo` msg) target
+    CmdCommands -> do
+        cmdsStatic <- views (botData . commands) Map.keys
+        cmdsDynamic <- uses dynamicCmds Map.keys
+        let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
+        replyTo source (Text.concat $ intersperse ", " cmds)
+    CmdAdd cmdName cmdText -> do
+        dynamicCmds %= Map.insert cmdName cmdText
+        msg <- views (botData . strings) (! "add")
+        replyTo source (msg <> cmdName)
+    CmdRemove cmdName -> do
+        dynamicCmds %= Map.delete cmdName
+        msg <- views (botData . strings) (! "remove")
+        replyTo source (msg <> cmdName)
+    CmdDynamic cmdName -> do
+        msg <- uses dynamicCmds (! cmdName)
+        replyTo source msg
     _             -> return ()
 
 
-
--- runBot :: MonadIO io => BotConfig -> io ()
--- runBot botConf = do
---     botState <- initBotState botConf
-
---     conn <- connectWithTLS' stdoutLogger "irc.chat.twitch.tv" 443 2
---     let conn' = conn { _onconnect = onConnect }
-
---     startStateful conn' ircConf botState
-
---     where
---         ircConf = defaultIRCConf (botConf^.botNick)
---             & eventHandlers .~ msgHandler : defaultEventHandlers
 
 -- onConnect :: Bot ()
 -- onConnect = do

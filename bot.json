@@ -33,9 +33,11 @@
     },
     "strings": {
         "hi": "hi! KonCha",
-        "bye": "cya! TehePelo"
+        "bye": "cya! TehePelo",
+        "add": "Added command !",
+        "remove": "Removed command !"
     },
-    "responses": {
+    "contains": {
         "KonCha": "L-lewd!"
     }
 }

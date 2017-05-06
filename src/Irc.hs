@@ -32,9 +32,10 @@ import           Util                      (readAllTChan)
 
 handler :: [EventHandler] -> Conduit Text Bot Text
 handler handlers = awaitForever $ \msg -> do
-    let event = parse ircEvent "" msg
+    let msg' = Text.replace "\r\n" "" msg
+    let event = parse ircEvent "" msg'
 
-    either (liftIO . die . parseErrorPretty) (runHandlers msg) event
+    either (liftIO . die . parseErrorPretty) (runHandlers msg') event
 
     output <- lift (view outputChan)
     responses <- atomicallyL (readAllTChan output)
