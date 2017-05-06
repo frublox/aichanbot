@@ -2,8 +2,7 @@
 {-# LANGUAGE Rank2Types        #-}
 
 module Irc
-    ( module Irc.Types
-    , module Irc.Parser
+    ( module ReExported
     , module Irc
     ) where
 
@@ -25,8 +24,9 @@ import           System.Exit               (die)
 import           Text.Megaparsec
 
 import           Bot
-import           Irc.Parser
-import           Irc.Types
+import           Irc.Handlers              as ReExported
+import           Irc.Parser                as ReExported
+import           Irc.Types                 as ReExported
 import           Lifted                    (atomicallyL)
 import           Util                      (readAllTChan)
 
@@ -44,10 +44,6 @@ handler handlers = awaitForever $ \msg -> do
         runHandlers msg event = forM_ handlers (handleEvent event msg)
         handleEvent event msg (EventHandler e f) =
             when (e == event) $ lift (f msg)
-
-pingHandler :: EventHandler
-pingHandler = EventHandler EPing $ \msg ->
-    send ("PONG :" <> Text.drop 6 msg)
 
 newlineStripper :: Conduit Text Bot Text
 newlineStripper = awaitForever $ \msg -> do

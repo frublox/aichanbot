@@ -26,6 +26,7 @@ executable twitch
                      , Irc
                      , Irc.Parser
                      , Irc.Types
+                     , Irc.Handlers
                      , Util
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
