@@ -3,28 +3,25 @@
 module Main where
 
 import           Data.Ini
-import           Data.List                  (intersperse)
-import           Data.Map.Strict            ((!))
-import qualified Data.Map.Strict            as Map
-import           Data.Monoid                ((<>))
-import           Data.Text                  (Text)
-import qualified Data.Text                  as Text
+import           Data.List              (intersperse)
+import           Data.Map.Strict        ((!))
+import qualified Data.Map.Strict        as Map
+import           Data.Monoid            ((<>))
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
 
 import           Control.Lens
-import           Control.Monad              (forM_, when)
-import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad.Trans.Class  (lift)
-import           Control.Monad.Trans.Either
+import           Control.Monad          (forM_, when)
+import           Control.Monad.IO.Class (liftIO)
 
-import           System.Exit                (die)
+import           System.Exit            (die)
 
-import           Text.Megaparsec            (parse, parseErrorPretty,
-                                             runParserT)
+import           Text.Megaparsec        (parse, runParserT)
 
 import           Bot
 import           Command
 import           Irc
-import           Util                       (textContains)
+import           Util                   (textContains)
 
 main :: IO ()
 main = do
@@ -36,7 +33,7 @@ main = do
 
     runIrcBot 6667 "irc.chat.twitch.tv" ircBot
 
-botSetup :: Bot ();
+botSetup :: Bot ()
 botSetup = do
     pass <- view botPass
     nick <- view botNick
@@ -46,6 +43,9 @@ botSetup = do
     send ("PASS :" <> pass)
     send ("NICK :" <> nick)
     send ("JOIN :" <> chan)
+
+    cmds <- readDynCmds
+    dynamicCmds .= cmds
 
 msgHandler :: EventHandler
 msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
@@ -70,25 +70,35 @@ handleCmd source cmd = case cmd of
         msg <- views (botData . strings) (! "hi")
         liftIO $ print msg
         maybe (replyTo source msg) (`replyTo` msg) target
+
     CmdBye target -> do
         msg <- views (botData . strings) (! "bye")
         maybe (replyTo source msg) (`replyTo` msg) target
+
     CmdCommands -> do
         cmdsStatic <- views (botData . commands) Map.keys
         cmdsDynamic <- uses dynamicCmds Map.keys
         let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
         replyTo source (Text.concat $ intersperse ", " cmds)
+
     CmdAdd cmdName cmdText -> do
         dynamicCmds %= Map.insert cmdName cmdText
         msg <- views (botData . strings) (! "add")
         replyTo source (msg <> cmdName)
+
+        saveDynCmds
+
     CmdRemove cmdName -> do
         dynamicCmds %= Map.delete cmdName
         msg <- views (botData . strings) (! "remove")
         replyTo source (msg <> cmdName)
+
+        saveDynCmds
+
     CmdDynamic cmdName -> do
         msg <- uses dynamicCmds (! cmdName)
         replyTo source msg
+
     _             -> return ()
 
 

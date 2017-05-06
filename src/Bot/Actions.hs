@@ -2,6 +2,9 @@
 
 module Bot.Actions where
 
+import           Data.Aeson
+import qualified Data.ByteString.Lazy   as BytesL
+import           Data.Map.Strict        (Map)
 import           Data.Monoid            ((<>))
 import           Data.Text              (Text)
 
@@ -39,3 +42,13 @@ getMsgText :: Text -> Bot Text
 getMsgText ircMsg = do
     let result = parse ircMsgText "" ircMsg
     either (liftIO . die . parseErrorPretty) return result
+
+readDynCmds :: Bot (Map Text Text)
+readDynCmds = liftIO $ do
+    bytes <- BytesL.readFile "dynamic_cmds.json"
+    either die return (eitherDecode bytes)
+
+saveDynCmds :: Bot ()
+saveDynCmds = do
+    cmds <- use dynamicCmds
+    liftIO $ BytesL.writeFile "dynamic_cmds.json" (encode cmds)
