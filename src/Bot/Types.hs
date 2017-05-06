@@ -23,9 +23,9 @@ import           Command.Types          (CommandInfo)
 import           Lifted                 (atomicallyL)
 
 data BotData = BotData
-    { _commands :: Map Text CommandInfo
-    , _strings  :: Map Text Text
-    , _contains :: Map Text Text
+    { _commands  :: Map Text CommandInfo
+    , _strings   :: Map Text Text
+    , _responses :: Map Text Text
     }
 makeLenses ''BotData
 

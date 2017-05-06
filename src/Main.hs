@@ -11,6 +11,7 @@ import           Data.Text                  (Text)
 import qualified Data.Text                  as Text
 
 import           Control.Lens
+import           Control.Monad              (forM_, when)
 import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Either
@@ -23,6 +24,7 @@ import           Text.Megaparsec            (parse, parseErrorPretty,
 import           Bot
 import           Command
 import           Irc
+import           Util                       (textContains)
 
 main :: IO ()
 main = do
@@ -46,13 +48,21 @@ botSetup = do
     send ("JOIN :" <> chan)
 
 msgHandler :: EventHandler
-msgHandler = EventHandler EPrivMsg $ \ircMsg ->
-    eitherT (liftIO . die . parseErrorPretty) return $ do
-        source <- hoistEither (parse ircMsgSource "" ircMsg)
-        text <- hoistEither (parse ircMsgText "" ircMsg)
-        cmd <- EitherT (runParserT command "" text)
+msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
+    let parsedSource = parse ircMsgSource "" ircMsg
+    let parsedText = parse ircMsgText "" ircMsg
 
-        lift (handleCmd source cmd)
+    case (,) <$> parsedSource <*> parsedText of
+        Right (source, text) -> do
+            responseStrs <- view (botData . responses)
+
+            forM_ (Map.keys responseStrs) $ \key ->
+                when (text `textContains` key) $
+                    replyTo source (responseStrs ! key)
+
+            cmd <- runParserT command "" text
+            mapM_ (handleCmd source) cmd
+        _ -> return ()
 
 handleCmd :: Text -> Command -> Bot ()
 handleCmd source cmd = case cmd of

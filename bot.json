@@ -37,7 +37,7 @@
         "add": "Added command !",
         "remove": "Removed command !"
     },
-    "contains": {
+    "responses": {
         "KonCha": "L-lewd!"
     }
 }
