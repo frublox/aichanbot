@@ -1,6 +1,9 @@
 # AiChanBot
 
-A simple Twitch bot that implements a couple of commands (for the moment).
+A simple Twitch bot that implements a small set of commands, and supports dynamically adding/removing commands during runtime. 
 
 To do:
-- Add command cooldowns
+- Rate-limiting
+- Command cooldowns
+- Web interface
+- Song requests
