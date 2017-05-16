@@ -22,6 +22,7 @@ executable twitch
                      , Command
                      , Command.Parser
                      , Command.Types
+                     , Command.Commands
                      , Lifted
                      , Irc
                      , Irc.Parser

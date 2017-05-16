@@ -19,11 +19,11 @@ import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader
 import           Control.Monad.State
 
-import           Command.Types          (CommandInfo)
+import           Command.Types
 import           Lifted                 (atomicallyL)
 
 data BotData = BotData
-    { _commands  :: Map Text CommandInfo
+    { _commands  :: [Command]
     , _strings   :: Map Text Text
     , _responses :: Map Text Text
     }

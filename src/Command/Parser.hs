@@ -13,49 +13,28 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Text
 
 import           Bot
+import           Command.Commands
 import           Command.Types
 
-command :: ParsecT Dec Text Bot Command
-command = do
+command :: Text -> ParsecT Dec Text Bot Invocation
+command source = do
     char '!'
     cmdName <- many alphaNumChar
 
     dynCmd <- (lift . lookupDynCmd . Text.pack) cmdName
 
     case dynCmd of
-        Just _ -> (return . CmdDynamic . Text.pack) cmdName
+        Just _ -> runCmd (cmdDynamic cmdName) source []
         Nothing -> do
-            args <- space *> many (quotedStr <|> word <* space)
+            args <- fmap (map Text.pack) $ space *> many (quotedStr <|> word <* space)
 
-            case cmdName of
-                "commands" -> return CmdCommands
-                "list" -> return CmdCommands
-                "cmds" -> return CmdCommands
+            cmds <- lift (view botData.commands)
 
-                "help" -> case args of
-                    (cmd:_) -> (return . CmdHelp . Text.pack) cmd
-                    _       -> return (CmdError "help" "!help takes one argument")
+            cmd <- find
+                (\cmd -> cmdName == cmd^.cmdInfo.name || cmdName `elem` cmd^.cmdInfo.aliases)
+                cmds
 
-                "aliases" -> case args of
-                    (cmd:_) -> (return . CmdAliases . Text.pack) cmd
-                    _ -> return (CmdError "aliases" "!aliases takes one argument")
-
-                "hi" -> case args of
-                    (user:_) -> (return . CmdHi . Just . Text.pack . stripAt) user
-                    _        -> return (CmdHi Nothing)
-
-                "bye" -> case args of
-                    (user:_) -> (return . CmdBye . Just . Text.pack . stripAt) user
-                    _        -> return (CmdBye Nothing)
-
-                "add" -> case args of
-                    (name:cmdText:_) -> return $ CmdAdd (Text.pack name) (Text.pack cmdText)
-                    _                -> return (CmdError "add" "!add takes two arguments")
-                "remove" -> case args of
-                    (name:_) -> (return . CmdRemove . Text.pack) name
-                    _        -> return (CmdError "remove" "!remove takes one argument")
-
-                _ -> return CmdUnknown
+            maybe (fail "could not find cmd") (return . \c -> runCmd c source args) cmd
 
     where
         stripAt s = case s of

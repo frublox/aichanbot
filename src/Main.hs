@@ -60,60 +60,60 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
                 when (text `textContains` key) $
                     replyTo source (responseStrs ! key)
 
-            cmd <- runParserT command "" text
+            invoc <- runParserT (command source) "" text
             perms <- getPermissions ircMsg
 
-            mapM_ (handleCmd source perms) cmd
+            mapM_ (handleCmd source perms) invoc
         _ -> return ()
 
-handleCmd :: Text -> CmdPermissions -> Command -> Bot ()
-handleCmd source perms cmd = case cmd of
-    CmdError cmdName err -> replyTo source (err <> ". Try !help " <> cmdName)
+handleCmd :: Text -> CmdPermissions -> Invocation -> Bot ()
+handleCmd source perms invoc =
+    when (perms == invoc^.invocOf.info.permissions) $
+        invoc^.result
 
-    CmdAliases cmdName -> do
-        maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
-        case maybeCmdInfo of
-            Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
-            Just cmdInfo ->
-                replyTo source . Text.concat . intersperse "," . map (Text.cons '!') $
-                    (cmdInfo^.aliases)
+    -- case cmd of
+    -- CmdError cmdName err -> replyTo source (err <> ". Try !help " <> cmdName)
 
-    CmdHelp cmdName -> do
-        maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
-        case maybeCmdInfo of
-            Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
-            Just cmdInfo -> replyTo source (cmdInfo^.help)
+    -- CmdAliases cmdName -> do
+    --     maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
+    --     case maybeCmdInfo of
+    --         Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
+    --         Just cmdInfo ->
+    --             replyTo source . Text.concat . intersperse "," . map (Text.cons '!') $
+    --                 (cmdInfo^.aliases)
 
-    CmdHi target  -> do
-        msg <- views (botData . strings) (! "hi")
-        maybe (replyTo source msg) (`replyTo` msg) target
+    -- CmdHelp cmdName -> do
+    --     maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
+    --     case maybeCmdInfo of
+    --         Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
+    --         Just cmdInfo -> replyTo source (cmdInfo^.help)
 
-    CmdBye target -> do
-        msg <- views (botData . strings) (! "bye")
-        maybe (replyTo source msg) (`replyTo` msg) target
+    -- CmdHi target  -> do
+    --     msg <- views (botData . strings) (! "hi")
+    --     maybe (replyTo source msg) (`replyTo` msg) target
 
-    CmdCommands -> do
-        cmdsStatic <- views (botData . commands) Map.keys
-        cmdsDynamic <- uses dynamicCmds Map.keys
-        let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
-        replyTo source (Text.concat $ intersperse ", " cmds)
+    -- CmdBye target -> do
+    --     msg <- views (botData . strings) (! "bye")
+    --     maybe (replyTo source msg) (`replyTo` msg) target
 
-    CmdAdd cmdName cmdText -> when (perms == PermModOnly) $ do
-        dynamicCmds %= Map.insert cmdName cmdText
-        msg <- views (botData . strings) (! "add")
-        replyTo source (msg <> cmdName)
+    -- CmdCommands -> runCmd [] cmdCommands
 
-        saveDynCmds
+    -- CmdAdd cmdName cmdText -> when (perms == PermModOnly) $ do
+    --     dynamicCmds %= Map.insert cmdName cmdText
+    --     msg <- views (botData . strings) (! "add")
+    --     replyTo source (msg <> cmdName)
 
-    CmdRemove cmdName -> when (perms == PermModOnly) $ do
-        dynamicCmds %= Map.delete cmdName
-        msg <- views (botData . strings) (! "remove")
-        replyTo source (msg <> cmdName)
+    --     saveDynCmds
 
-        saveDynCmds
+    -- CmdRemove cmdName -> when (perms == PermModOnly) $ do
+    --     dynamicCmds %= Map.delete cmdName
+    --     msg <- views (botData . strings) (! "remove")
+    --     replyTo source (msg <> cmdName)
 
-    CmdDynamic cmdName -> do
-        msg <- uses dynamicCmds (! cmdName)
-        replyTo source msg
+    --     saveDynCmds
 
-    _             -> return ()
+    -- CmdDynamic cmdName -> do
+    --     msg <- uses dynamicCmds (! cmdName)
+    --     replyTo source msg
+
+    -- _             -> return ()
