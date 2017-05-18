@@ -1,9 +1,7 @@
 module Bot
-    ( module Bot.Types
-    , module Bot.Actions
+    ( module ReExported
     ) where
 
-import           Bot.Actions
-import           Bot.Types
-
+import           Bot.Actions as ReExported
+import           Bot.Types   as ReExported
 

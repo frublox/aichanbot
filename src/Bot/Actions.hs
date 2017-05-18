@@ -67,3 +67,23 @@ getPermissions ircMsg = do
                 then return PermModOnly
                 else return PermAnyone
         _ -> return PermAnyone
+
+lookupCommand :: Text -> Bot (Maybe Command)
+lookupCommand cmdName = do
+    cmds <- view (botData.commands)
+    return $ find
+        (\cmd -> cmdName == cmd^.cmdInfo.name || cmdName `elem` cmd^.cmdInfo.aliases)
+        cmds
+
+getCommand :: Text -> Bot Command
+getCommand cmdName = do
+    cmds <- view (botData.commands)
+    let result = find
+            (\cmd -> cmdName == cmd^.cmdInfo.name || cmdName `elem` cmd^.cmdInfo.aliases)
+            cmds
+    maybe (fail $ "Couldn't find command " <> cmdName) return result
+
+replyHelpStr :: Text -> Bot ()
+replyHelpStr cmdName = do
+    cmd <- getCommand cmdName
+    replyTo source (cmd^.info.help)

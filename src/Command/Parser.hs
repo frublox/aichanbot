@@ -16,23 +16,19 @@ import           Bot
 import           Command.Commands
 import           Command.Types
 
-command :: Text -> ParsecT Dec Text Bot Invocation
-command source = do
+invocation :: Text -> ParsecT Dec Text Bot Invocation
+invocation source = do
     char '!'
     cmdName <- many alphaNumChar
 
-    dynCmd <- (lift . lookupDynCmd . Text.pack) cmdName
+    dynCmd <- (lift . isDynCmd . Text.pack) cmdName
 
-    case dynCmd of
-        Just _ -> runCmd (cmdDynamic cmdName) source []
-        Nothing -> do
+    if dynCmd
+        then
+             runCmd (cmdDynamic cmdName) source []
+        else do
             args <- fmap (map Text.pack) $ space *> many (quotedStr <|> word <* space)
-
-            cmds <- lift (view botData.commands)
-
-            cmd <- find
-                (\cmd -> cmdName == cmd^.cmdInfo.name || cmdName `elem` cmd^.cmdInfo.aliases)
-                cmds
+            cmd <- lookupCommand cmdName
 
             maybe (fail "could not find cmd") (return . \c -> runCmd c source args) cmd
 
@@ -41,13 +37,13 @@ command source = do
             ('@':s') -> s'
             _        -> s
 
-        lookupDynCmd :: Text -> Bot (Maybe Command)
-        lookupDynCmd cmdName = do
+        isDynCmd :: Text -> Bot Bool
+        isDynCmd cmdName = do
             cmds <- use dynamicCmds
 
             case Map.lookup cmdName cmds of
-                Nothing -> return Nothing
-                _       -> return $ Just (CmdDynamic cmdName)
+                Nothing -> return False
+                _       -> return True
 
         quotedStr :: Monad m => ParsecT Dec Text m String
         quotedStr = char '\"' *> many (noneOf ['\"']) <* char '\"'

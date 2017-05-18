@@ -8,63 +8,63 @@ import           Bot.Actions
 
 import           Command.Types
 
-cmdCommands :: Command
-cmdCommands = makeCommand "commands" ["cmds", "list"] PermAnyone $ \source _ -> do
+cmdCommands :: CommandInfo -> Command
+cmdCommands = makeCommand $ \source _ -> do
     cmdsStatic <- views (botData . commands) Map.keys
     cmdsDynamic <- uses dynamicCmds Map.keys
     let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
     replyTo source (Text.concat $ intersperse ", " cmds)
 
-cmdHi :: Command
-cmdHi = makeCommand "hi" [] PermAnyone $ \source args -> do
+cmdHi :: CommandInfo -> Command
+cmdHi = makeCommand $ \source args -> do
     msg <- views (botData . strings) (! "hi")
 
     case args of
         (target:_) -> replyTo target msg
         _          -> replyTo source msg
 
-cmdBye :: Command
-cmdBye = makeCommand "bye" [] PermAnyone $ \source args -> do
+cmdBye :: CommandInfo -> Command
+cmdBye = makeCommand $ \source args -> do
     msg <- views (botData . strings) (! "bye")
 
     case args of
         (target:_) -> replyTo target msg
         _          -> replyTo source msg
 
-cmdAliases :: Command
-cmdAliases = makeCommand "aliases" [] PermAnyone $ \source args ->
+cmdAliases :: CommandInfo -> Command
+cmdAliases = makeCommand $ \source args ->
     case args of
         (cmdName:_) -> do
-            maybeCmd <- views (botData . commands) (find (\cmd -> cmd^.info.name == cmdName))
+            maybeCmd <- lookupCommand cmdName
             case maybeCmd of
                 Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
                 Just cmd ->
                     replyTo source . Text.concat . intersperse "," . map (Text.cons '!') $
                         (cmdInfo^.aliases)
-        _ -> replyTo source "Invali"
+        _ -> replyHelpStr "aliases"
 
-cmdHelp :: Command
-cmdHelp = makeCommand "help" [] PermAnyone $ \source args -> do
-    maybeCmd <- views (botData . commands) (find (\cmd -> cmd^.info.name == cmdName))
-    case maybeCmd of
-        Nothing  -> replyTo source ("Couldn't find command !" <> cmdName)
-        Just cmd -> replyTo source (cmd^.cmdInfo.help)
+cmdHelp :: CommandInfo -> Command
+cmdHelp = makeCommand $ \source args -> case args of
+    (cmdName:_) -> do
+        maybeCmd <- lookupCommand cmdName
+        case maybeCmd of
+            Nothing  -> replyTo source ("Couldn't find command !" <> cmdName)
+            Just cmd -> replyTo source (cmd^.cmdInfo.help)
+    _ -> replyHelpStr "help"
 
-cmdAdd :: Command
-cmdAdd = makeCommand "add" [] PermModOnly $ \source args ->
+cmdAdd :: CommandInfo -> Command
+cmdAdd = makeCommand $ \source args ->
     case args of
         (cmdName:cmdText:_) -> do
             dynamicCmds %= Map.insert cmdName cmdText
-            msg <- views (botData . strings) (! "add")
+            msg <- views (botData.strings) (! "add")
             replyTo source (msg <> cmdName)
 
             saveDynCmds
-        _ -> do
+        _ -> replyHelpStr "add"
 
-            replyTo source "Usage: !add <cmd name> <cmd text>"
-
-cmdRemove :: Command
-cmdRemove = makeCommand "remove" [] PermModOnly $ \source args ->
+cmdRemove :: CommandInfo -> Command
+cmdRemove = makeCommand $ \source args ->
     case args of
         (cmdName:_) -> do
             dynamicCmds %= Map.delete cmdName
@@ -72,9 +72,24 @@ cmdRemove = makeCommand "remove" [] PermModOnly $ \source args ->
             replyTo source (msg <> cmdName)
 
             saveDynCmds
-        _ -> replyTo source "Usage: !remove <cmd name>"
+        _ -> replyHelpStr "remove"
 
 cmdDynamic :: Text -> Command
-cmdDynamic cmdName = makeCommand cmdName [] PermAnyone $ \source args -> do
-    msg <- uses dynamicCmds (! cmdName)
-    replyTo source msg
+cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpStr)
+    where
+        helpStr = "Usage: !" <> cmdName
+
+        action source args = do
+            msg <- uses dynamicCmds (! cmdName)
+            replyTo source msg
+
+staticCommands :: Map Text (CommandInfo -> Command)
+staticCommands = fromList
+    [ ("commands", cmdCommands)
+    , ("hi", cmdHi)
+    , ("bye", cmdBye)
+    , ("aliases", cmdAliases)
+    , ("help", cmdHelp)
+    , ("add", cmdAdd)
+    , ("remove", cmdRemove)
+    ]

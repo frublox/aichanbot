@@ -23,8 +23,7 @@ import           Command.Types
 import           Lifted                 (atomicallyL)
 
 data BotData = BotData
-    { _commands  :: [Command]
-    , _strings   :: Map Text Text
+    { _strings   :: Map Text Text
     , _responses :: Map Text Text
     }
 makeLenses ''BotData
@@ -36,6 +35,7 @@ data BotConfig = BotConfig
     , _botPass    :: Text
     , _channel    :: Text
     , _outputChan :: TChan Text
+    , _commands   :: [Command]
     , _botData    :: BotData
     }
 makeLenses ''BotConfig
@@ -48,11 +48,14 @@ initBotConfig ini = do
 
     outputChan' <- Right <$> atomicallyL newTChan
 
+    commands' <- Right <$> loadCommands
+
     return $ BotConfig
         <$> lookupValue "config" "nick" ini
         <*> lookupValue "config" "pass" ini
         <*> lookupValue "config" "channel" ini
         <*> outputChan'
+        <*> commands'
         <*> botData'
 
 newtype BotState = BotState
