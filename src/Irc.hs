@@ -67,11 +67,6 @@ clientLogger = awaitForever $ \msg -> do
     liftIO $ Bytes.putStrLn $ encodeUtf8 ("<-- " <> msg)
     yield msg
 
-bsServerLogger :: Conduit ByteString Bot ByteString
-bsServerLogger = awaitForever $ \msg -> do
-    liftIO $ print $ Bytes.unpack msg
-    yield msg
-
 onConnectC :: Bot () -> Conduit Text Bot Text
 onConnectC action = do
     lift action
@@ -87,7 +82,6 @@ runIrcBot port host ircBot = runTCPClient (clientSettings port host) app
             where
                 bot = runConduit $
                     appSource ad
-                    -- .| bsServerLogger
                     .| decodeUtf8C
                     .| newlineStripper
                     .| serverLogger
