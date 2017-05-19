@@ -2,31 +2,34 @@
 
 module Main where
 
+import           Data.Aeson             (eitherDecode)
+import qualified Data.ByteString.Lazy   as BytesL
 import           Data.Ini
-import           Data.List              (intersperse)
 import           Data.Map.Strict        ((!))
 import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
 
+import           Control.Applicative    (liftA2)
 import           Control.Lens
 import           Control.Monad          (forM_, when)
-import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 
 import           System.Exit            (die)
 
 import           Text.Megaparsec        (parse, runParserT)
 
 import           Bot
-import           Command
+import           Command.Parser         (invocation)
+import           Commands               (staticCommands)
 import           Irc
+import           Types
 import           Util                   (textContains)
 
 main :: IO ()
 main = do
     ini <- readIniFile "config.ini" >>= either die return
-    botConfig <- initBotConfig ini >>= either die return
+    cmds <- loadCommands
+    botConfig <- initBotConfig cmds ini >>= either die return
 
     let handlers = [pingHandler, msgHandler]
     let ircBot = IrcBot botSetup handlers botConfig initBotState
@@ -52,68 +55,25 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
     let parsedSource = parse ircMsgSource "" ircMsg
     let parsedText = parse ircMsgText "" ircMsg
 
-    case (,) <$> parsedSource <*> parsedText of
-        Right (source, text) -> do
-            responseStrs <- view (botData . responses)
+    forM_ (liftA2 (,) parsedSource parsedText) $ \(source, text) -> do
+        -- reply appropriately when text contains a keyphrase
+        responseStrs <- view (botData.responses)
+        forM_ (Map.keys responseStrs) $ \key ->
+            when (text `textContains` key) $
+                replyTo source (responseStrs ! key)
 
-            forM_ (Map.keys responseStrs) $ \key ->
-                when (text `textContains` key) $
-                    replyTo source (responseStrs ! key)
+        perms <- getPermissions ircMsg
 
-            cmd <- runParserT command "" text
-            perms <- getPermissions ircMsg
+        invoc <- runParserT (invocation source) "" text
 
-            mapM_ (handleCmd source perms) cmd
-        _ -> return ()
+        forM_ invoc $ \invoc' ->
+            when (perms >= invoc'^.invocOf.info.permissions) $
+                invoc'^.runResult
 
-handleCmd :: Text -> CmdPermissions -> Command -> Bot ()
-handleCmd source perms cmd = case cmd of
-    CmdError cmdName err -> replyTo source (err <> ". Try !help " <> cmdName)
-
-    CmdAliases cmdName -> do
-        maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
-        case maybeCmdInfo of
-            Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
-            Just cmdInfo ->
-                replyTo source . Text.concat . intersperse "," . map (Text.cons '!') $
-                    (cmdInfo^.aliases)
-
-    CmdHelp cmdName -> do
-        maybeCmdInfo <- views (botData . commands) (Map.lookup cmdName)
-        case maybeCmdInfo of
-            Nothing -> replyTo source ("Couldn't find command !" <> cmdName)
-            Just cmdInfo -> replyTo source (cmdInfo^.help)
-
-    CmdHi target  -> do
-        msg <- views (botData . strings) (! "hi")
-        maybe (replyTo source msg) (`replyTo` msg) target
-
-    CmdBye target -> do
-        msg <- views (botData . strings) (! "bye")
-        maybe (replyTo source msg) (`replyTo` msg) target
-
-    CmdCommands -> do
-        cmdsStatic <- views (botData . commands) Map.keys
-        cmdsDynamic <- uses dynamicCmds Map.keys
-        let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
-        replyTo source (Text.concat $ intersperse ", " cmds)
-
-    CmdAdd cmdName cmdText -> when (perms == PermModOnly) $ do
-        dynamicCmds %= Map.insert cmdName cmdText
-        msg <- views (botData . strings) (! "add")
-        replyTo source (msg <> cmdName)
-
-        saveDynCmds
-
-    CmdRemove cmdName -> when (perms == PermModOnly) $ do
-        dynamicCmds %= Map.delete cmdName
-        msg <- views (botData . strings) (! "remove")
-        replyTo source (msg <> cmdName)
-
-        saveDynCmds
-
-    CmdDynamic cmdName -> do
-        msg <- uses dynamicCmds (! cmdName)
-        replyTo source msg
-
-    _             -> return ()
+loadCommands :: MonadIO io => io [Command]
+loadCommands = liftIO $ do
+    bytes <- BytesL.readFile "cmds.json"
+    case eitherDecode bytes of
+        Left err       -> die err
+        Right cmdInfos -> return $
+            map (\info' -> staticCommands ! view name info' $ info') cmdInfos

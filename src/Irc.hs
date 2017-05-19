@@ -9,10 +9,12 @@ module Irc
 import           Conduit
 
 import           Data.ByteString           (ByteString)
+import qualified Data.ByteString.Char8     as Bytes
 import           Data.Conduit.Network
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as Text
+import           Data.Text.Encoding
 import qualified Data.Text.IO              as Text
 
 import           Control.Lens
@@ -23,11 +25,11 @@ import           Control.Monad.Trans.Class (lift)
 import           System.Exit               (die)
 import           Text.Megaparsec
 
-import           Bot
 import           Irc.Handlers              as ReExported
 import           Irc.Parser                as ReExported
 import           Irc.Types                 as ReExported
 import           Lifted                    (atomicallyL)
+import           Types
 import           Util                      (readAllTChan)
 
 handler :: [EventHandler] -> Conduit Text Bot Text
@@ -57,12 +59,17 @@ newlineAdder = awaitForever $ \msg ->
 serverLogger :: Conduit Text Bot Text
 serverLogger = awaitForever $ \msg -> do
     let msg' = Text.replace "\n" "\n--> " msg
-    liftIO $ Text.putStrLn ("--> " <> msg')
+    liftIO $ Bytes.putStrLn $ encodeUtf8 ("--> " <> msg')
     yield msg
 
 clientLogger :: Conduit Text Bot Text
 clientLogger = awaitForever $ \msg -> do
-    liftIO $ Text.putStrLn ("<-- " <> msg)
+    liftIO $ Bytes.putStrLn $ encodeUtf8 ("<-- " <> msg)
+    yield msg
+
+bsServerLogger :: Conduit ByteString Bot ByteString
+bsServerLogger = awaitForever $ \msg -> do
+    liftIO $ print $ Bytes.unpack msg
     yield msg
 
 onConnectC :: Bot () -> Conduit Text Bot Text
@@ -80,6 +87,7 @@ runIrcBot port host ircBot = runTCPClient (clientSettings port host) app
             where
                 bot = runConduit $
                     appSource ad
+                    -- .| bsServerLogger
                     .| decodeUtf8C
                     .| newlineStripper
                     .| serverLogger

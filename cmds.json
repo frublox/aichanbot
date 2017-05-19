@@ -1,0 +1,44 @@
+[
+    {
+        "name": "hi",
+        "aliases": [],
+        "permissions": "anyone",
+        "help": "Usage: !hi [optional username, w/ or w/out @]"
+    },
+    {
+        "name": "bye",
+        "aliases": [],
+        "permissions": "anyone",
+        "help": "Usage: !bye [optional username, w/ or w/out @]"
+    },
+    {
+        "name": "commands",
+        "aliases": ["list", "cmds"],
+        "permissions": "anyone",
+        "help": "Usage: !commands"
+    },
+    {
+        "name": "add",
+        "aliases": [],
+        "permissions": "modonly",
+        "help": "Usage: !add <command> <command text>"
+    },
+    {
+        "name": "remove",
+        "aliases": [],
+        "permissions": "modonly",
+        "help": "Usage: !remove <command to remove>"
+    },
+    {
+        "name": "help",
+        "aliases": [],
+        "permissions": "anyone",
+        "help": "Usage: !help <command>"
+    },
+    {
+        "name": "aliases",
+        "aliases": [],
+        "permissions": "anyone",
+        "help": "Usage: !aliases <command>"
+    }
+]
