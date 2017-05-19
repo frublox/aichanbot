@@ -20,3 +20,9 @@ textContains :: Text -> Text -> Bool
 textContains y x = case Text.breakOn x y of
     (_, "") -> False
     _       -> True
+
+stripAt :: Text -> Text
+stripAt txt
+    | Text.null txt = txt
+    | Text.head txt == '@' = Text.tail txt
+    | otherwise = txt

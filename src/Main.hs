@@ -2,32 +2,34 @@
 
 module Main where
 
-import           Data.Aeson
+import           Data.Aeson             (eitherDecode)
+import qualified Data.ByteString.Lazy   as BytesL
 import           Data.Ini
-import           Data.List              (intersperse)
 import           Data.Map.Strict        ((!))
 import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
 
+import           Control.Applicative    (liftA2)
 import           Control.Lens
 import           Control.Monad          (forM_, when)
-import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 
 import           System.Exit            (die)
 
 import           Text.Megaparsec        (parse, runParserT)
 
 import           Bot
-import           Command
+import           Command.Parser         (invocation)
+import           Commands               (staticCommands)
 import           Irc
+import           Types
 import           Util                   (textContains)
 
 main :: IO ()
 main = do
     ini <- readIniFile "config.ini" >>= either die return
-    botConfig <- initBotConfig ini >>= either die return
+    cmds <- loadCommands
+    botConfig <- initBotConfig cmds ini >>= either die return
 
     let handlers = [pingHandler, msgHandler]
     let ircBot = IrcBot botSetup handlers botConfig initBotState
@@ -60,16 +62,18 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
             when (text `textContains` key) $
                 replyTo source (responseStrs ! key)
 
-        invoc <- runParserT (invocation source) "" text
         perms <- getPermissions ircMsg
 
-        when (perms == invoc^.invocOf.info.permissions) $
-            invoc^.result
+        invoc <- runParserT (invocation source) "" text
+
+        forM_ invoc $ \invoc' ->
+            when (perms >= invoc'^.invocOf.info.permissions) $
+                invoc'^.runResult
 
 loadCommands :: MonadIO io => io [Command]
 loadCommands = liftIO $ do
     bytes <- BytesL.readFile "cmds.json"
     case eitherDecode bytes of
         Left err       -> die err
-        Right cmdInfos -> return $ for cmdInfos (staticCommands ! (cmdInfo^.name))
-
+        Right cmdInfos -> return $
+            map (\info' -> staticCommands ! view name info' $ info') cmdInfos

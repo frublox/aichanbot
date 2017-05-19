@@ -13,30 +13,26 @@ import           Text.Megaparsec
 import           Text.Megaparsec.Text
 
 import           Bot
-import           Command.Commands
-import           Command.Types
+import           Commands
+import           Types
 
 invocation :: Text -> ParsecT Dec Text Bot Invocation
 invocation source = do
     char '!'
-    cmdName <- many alphaNumChar
+    cmdName <- Text.pack <$> many alphaNumChar
 
-    dynCmd <- (lift . isDynCmd . Text.pack) cmdName
+    dynCmd <- lift (isDynCmd cmdName)
 
     if dynCmd
         then
-             runCmd (cmdDynamic cmdName) source []
+             return $ runCmd (cmdDynamic cmdName) source []
         else do
             args <- fmap (map Text.pack) $ space *> many (quotedStr <|> word <* space)
-            cmd <- lookupCommand cmdName
+            cmd <- lift (lookupCommand cmdName)
 
             maybe (fail "could not find cmd") (return . \c -> runCmd c source args) cmd
 
     where
-        stripAt s = case s of
-            ('@':s') -> s'
-            _        -> s
-
         isDynCmd :: Text -> Bot Bool
         isDynCmd cmdName = do
             cmds <- use dynamicCmds
