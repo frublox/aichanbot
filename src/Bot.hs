@@ -73,7 +73,7 @@ lookupCommand :: Text -> Bot (Maybe Command)
 lookupCommand cmdName = do
     cmds <- view commands
     let cmd = find
-            (\cmd -> cmdName == cmd^.info.name || cmdName `elem` cmd^.info.aliases)
+            (\c -> cmdName == c^.info.name || cmdName `elem` c^.info.aliases)
             cmds
     case cmd of
         Nothing -> do
@@ -84,22 +84,19 @@ lookupCommand cmdName = do
     where
         -- Redefined to avoid import cycles
         cmdDynamic :: Text -> Command
-        cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpStr)
+        cmdDynamic cmdName' = makeCommand action (CommandInfo cmdName' [] PermAnyone helpStr)
             where
-                helpStr = "Usage: !" <> cmdName <> " [optional username]"
+                helpStr = "Usage: !" <> cmdName' <> " [optional username]"
 
                 action source args = do
-                    msg <- uses dynamicCmds (! cmdName)
+                    msg <- uses dynamicCmds (! cmdName')
                     case args of
                         (target:_) -> replyTo (stripAt target) msg
                         _          -> replyTo source msg
 
 getCommand :: Text -> Bot Command
 getCommand cmdName = do
-    cmds <- view commands
-    let cmd = find
-            (\c -> cmdName == c^.info.name || cmdName `elem` c^.info.aliases)
-            cmds
+    cmd <- lookupCommand cmdName
     maybe (fail $ "Couldn't find command " <> unpack cmdName) return cmd
 
 replyHelpStr :: Text -> Text -> Bot ()
