@@ -15,8 +15,9 @@ import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as Text
 import           Data.Text.Encoding
-import qualified Data.Text.IO              as Text
 
+import           Control.Concurrent        (forkIO, threadDelay)
+import           Control.Concurrent.STM
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.IO.Class    (liftIO)
@@ -28,7 +29,8 @@ import           Text.Megaparsec
 import           Irc.Handlers              as ReExported
 import           Irc.Parser                as ReExported
 import           Irc.Types                 as ReExported
-import           Lifted                    (atomicallyL)
+
+import           Lifted                    (atomicallyL, readTVarIOL)
 import           Types
 import           Util                      (readAllTChan)
 
@@ -75,6 +77,31 @@ onConnectC action = do
     yieldMany msgs
     awaitForever $ \msg -> yield msg
 
+rateLimiter :: Conduit Text Bot Text
+rateLimiter = do
+    msgsSent <- atomicallyL (newTVar (0 :: Int))
+
+    let timer = forever $ do
+            threadDelay (30 * 1000000)
+            atomically (writeTVar msgsSent 0)
+
+    liftIO (forkIO timer)
+
+    let checkAndYield msg = do
+            numMsgsSent <- readTVarIOL msgsSent
+            liftIO $ print numMsgsSent
+            if numMsgsSent < 10
+                then do
+                    atomicallyL (modifyTVar' msgsSent (+1))
+                    yield msg
+                else do
+                    atomicallyL $ do
+                        msgs <- readTVar msgsSent
+                        unless (msgs == 0) retry
+                    yield msg
+
+    awaitForever checkAndYield
+
 runIrcBot :: Int -> ByteString -> IrcBot -> IO ()
 runIrcBot port host ircBot = runTCPClient (clientSettings port host) app
     where
@@ -87,6 +114,7 @@ runIrcBot port host ircBot = runTCPClient (clientSettings port host) app
                     .| serverLogger
                     .| handler (ircBot^.eventHandlers)
                     .| onConnectC (ircBot^.onConnect)
+                    .| rateLimiter
                     .| clientLogger
                     .| newlineAdder
                     .| encodeUtf8C
