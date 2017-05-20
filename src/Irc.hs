@@ -89,7 +89,6 @@ rateLimiter = do
 
     let checkAndYield msg = do
             numMsgsSent <- readTVarIOL msgsSent
-            liftIO $ print numMsgsSent
             if numMsgsSent < 20
                 then do
                     atomicallyL (modifyTVar' msgsSent (+1))
