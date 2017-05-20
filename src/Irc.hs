@@ -75,7 +75,7 @@ onConnectC action = do
     output <- lift (view outputChan)
     msgs <- atomicallyL (readAllTChan output)
     yieldMany msgs
-    awaitForever $ \msg -> yield msg
+    awaitForever yield
 
 rateLimiter :: Conduit Text Bot Text
 rateLimiter = do
