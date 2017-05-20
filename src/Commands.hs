@@ -84,11 +84,13 @@ cmdRemove = makeCommand $ \source args ->
 cmdDynamic :: Text -> Command
 cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpStr)
     where
-        helpStr = "Usage: !" <> cmdName
+        helpStr = "Usage: !" <> cmdName <> " [optional username]"
 
-        action source _ = do
+        action source args = do
             msg <- uses dynamicCmds (! cmdName)
-            replyTo source msg
+            case args of
+                (target:_) -> replyTo (stripAt target) msg
+                _          -> replyTo source msg
 
 staticCommands :: Map Text (CommandInfo -> Command)
 staticCommands = Map.fromList

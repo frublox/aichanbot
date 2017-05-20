@@ -20,14 +20,15 @@ invocation :: Text -> ParsecT Dec Text Bot Invocation
 invocation source = do
     char '!'
     cmdName <- Text.pack <$> many alphaNumChar
+    args <- fmap (map Text.pack) $ space *> many (quotedStr <|> word <* space)
 
     dynCmd <- lift (isDynCmd cmdName)
 
     if dynCmd
         then
-             return $ runCmd (cmdDynamic cmdName) source []
+             return $ runCmd (cmdDynamic cmdName) source args
         else do
-            args <- fmap (map Text.pack) $ space *> many (quotedStr <|> word <* space)
+
             cmd <- lift (lookupCommand cmdName)
 
             maybe (fail "could not find cmd") (return . \c -> runCmd c source args) cmd

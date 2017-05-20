@@ -6,6 +6,7 @@ import           Data.Aeson
 import qualified Data.ByteString.Lazy   as BytesL
 import           Data.List              (find)
 import           Data.Map.Strict        (Map, (!))
+import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
 import           Data.Text              (Text, unpack)
 
@@ -19,7 +20,7 @@ import           Text.Megaparsec        (parse, parseErrorPretty)
 import           Irc.Parser
 import           Lifted                 (atomicallyL)
 import           Types
-import           Util                   (textContains)
+import           Util                   (stripAt, textContains)
 
 send :: Text -> Bot ()
 send msg = do
@@ -71,9 +72,27 @@ getPermissions ircMsg = do
 lookupCommand :: Text -> Bot (Maybe Command)
 lookupCommand cmdName = do
     cmds <- view commands
-    return $ find
-        (\cmd -> cmdName == cmd^.info.name || cmdName `elem` cmd^.info.aliases)
-        cmds
+    let cmd = find
+            (\cmd -> cmdName == cmd^.info.name || cmdName `elem` cmd^.info.aliases)
+            cmds
+    case cmd of
+        Nothing -> do
+            dynCmds <- uses dynamicCmds Map.keys
+            return $ cmdDynamic <$> find (== cmdName) dynCmds
+        Just _ -> return cmd
+
+    where
+        -- Redefined to avoid import cycles
+        cmdDynamic :: Text -> Command
+        cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpStr)
+            where
+                helpStr = "Usage: !" <> cmdName <> " [optional username]"
+
+                action source args = do
+                    msg <- uses dynamicCmds (! cmdName)
+                    case args of
+                        (target:_) -> replyTo (stripAt target) msg
+                        _          -> replyTo source msg
 
 getCommand :: Text -> Bot Command
 getCommand cmdName = do
