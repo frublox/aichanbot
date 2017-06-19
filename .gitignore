@@ -21,3 +21,5 @@ cabal.project.local
 
 *.ini
 *.log
+
+dynamic_cmds.json
