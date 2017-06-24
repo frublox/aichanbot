@@ -2,18 +2,22 @@
 
 module Commands where
 
-import           Data.List       (intersperse)
-import           Data.Map.Strict (Map, (!))
-import qualified Data.Map.Strict as Map
-import           Data.Monoid     ((<>))
-import           Data.Text       (Text)
-import qualified Data.Text       as Text
+import           Data.Aeson.Lens
+import           Data.List              (intersperse)
+import           Data.Map.Strict        (Map, (!))
+import qualified Data.Map.Strict        as Map
+import           Data.Monoid            ((<>))
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
 
 import           Control.Lens
+import           Control.Monad.IO.Class (liftIO)
+
+import           System.Random
 
 import           Bot
 import           Types
-import           Util            (stripAt)
+import           Util                   (stripAt)
 
 cmdCommands :: CommandInfo -> Command
 cmdCommands = makeCommand $ \source _ -> do
@@ -81,6 +85,18 @@ cmdRemove = makeCommand $ \source args ->
             saveDynCmds
         _ -> replyHelpStr source "remove"
 
+cmd8ball :: CommandInfo -> Command
+cmd8ball = makeCommand $ \source args ->
+    case args of
+        [] -> do
+            msg <- view (botData.strings.key "8ball"._Object.key "no_args"._String)
+            replyTo source msg
+        _ -> do
+            responses <- view (botData.strings._JSON.key "8ball"._Object.key "responses"._Array)
+
+            i <- liftIO $ randomRIO (0, length responses - 1)
+            replyTo source (responses ^. nth i . _String)
+
 cmdDynamic :: Text -> Command
 cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpStr)
     where
@@ -101,4 +117,5 @@ staticCommands = Map.fromList
     , ("help", cmdHelp)
     , ("add", cmdAdd)
     , ("remove", cmdRemove)
+    , ("8ball", cmd8ball)
     ]

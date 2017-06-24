@@ -40,5 +40,11 @@
         "aliases": [],
         "permissions": "anyone",
         "help": "Usage: !aliases <command>"
+    },
+    {
+        "name": "8ball",
+        "aliases": [],
+        "permissions": "anyone",
+        "help": "Usage: !8ball <yes-or-no question>"
     }
 ]

@@ -3,7 +3,25 @@
         "hi": "hi! KonCha",
         "bye": "cya! TehePelo",
         "add": "Added command !",
-        "remove": "Removed command !"
+        "remove": "Removed command !",
+        "8ball": {
+            "says": "The magic 8ball says... ",
+            "no_args": "Enter \"!8ball <yes-or-no question>\" to find out the truth!",
+            "responses": [
+                "Absolutely not",
+                "Absolutely",
+                "No way",
+                "Possibly",
+                "Definitely",
+                "It is likely",
+                "It is unlikely",
+                "Outlook not good",
+                "Outlook good",
+                "Ask again",
+                "Maybe someday",
+                "Are you serious?"
+            ]
+        }
     },
     "responses": {
         "KonCha": "L-lewd!"

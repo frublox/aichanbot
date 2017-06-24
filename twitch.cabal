@@ -44,3 +44,5 @@ executable twitch
                      , conduit-combinators
                      , conduit-extra
                      , exceptions
+                     , random
+                     , lens-aeson
