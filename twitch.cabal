@@ -46,3 +46,5 @@ executable twitch
                      , exceptions
                      , random
                      , lens-aeson
+                     , unordered-containers
+                     , vector

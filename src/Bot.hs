@@ -4,9 +4,9 @@ module Bot where
 
 import           Data.Aeson
 import qualified Data.ByteString.Lazy   as BytesL
+import           Data.HashMap.Strict    (HashMap, (!))
+import qualified Data.HashMap.Strict    as HashMap
 import           Data.List              (find)
-import           Data.Map.Strict        (Map, (!))
-import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
 import           Data.Text              (Text, unpack)
 
@@ -46,7 +46,7 @@ getMsgText ircMsg = do
     let result = parse ircMsgText "" ircMsg
     either (liftIO . die . parseErrorPretty) return result
 
-readDynCmds :: Bot (Map Text Text)
+readDynCmds :: Bot (HashMap Text Text)
 readDynCmds = liftIO $ do
     bytes <- BytesL.readFile "dynamic_cmds.json"
     either die return (eitherDecode bytes)
@@ -77,7 +77,7 @@ lookupCommand cmdName = do
             cmds
     case cmd of
         Nothing -> do
-            dynCmds <- uses dynamicCmds Map.keys
+            dynCmds <- uses dynamicCmds HashMap.keys
             return $ cmdDynamic <$> find (== cmdName) dynCmds
         Just _ -> return cmd
 

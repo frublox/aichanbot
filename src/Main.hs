@@ -3,10 +3,11 @@
 module Main where
 
 import           Data.Aeson             (eitherDecode)
+import           Data.Aeson.Lens
 import qualified Data.ByteString.Lazy   as BytesL
+import           Data.HashMap.Strict    ((!))
+import qualified Data.HashMap.Strict    as HashMap
 import           Data.Ini
-import           Data.Map.Strict        ((!))
-import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
 
 import           Control.Applicative    (liftA2)
@@ -57,10 +58,11 @@ msgHandler = EventHandler EPrivMsg $ \ircMsg -> do
 
     forM_ (liftA2 (,) parsedSource parsedText) $ \(source, text) -> do
         -- reply appropriately when text contains a keyphrase
-        responseStrs <- view (botData.responses)
-        forM_ (Map.keys responseStrs) $ \key ->
-            when (text `textContains` key) $
-                replyTo source (responseStrs ! key)
+        responseKeys <- views (botData . key "responses" . _Object) HashMap.keys
+        forM_ responseKeys $ \k ->
+            when (text `textContains` k) $ do
+                response <- view (botData . key "responses" . key k . _String)
+                replyTo source response
 
         perms <- getPermissions ircMsg
 

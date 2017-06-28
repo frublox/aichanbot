@@ -1,9 +1,9 @@
 module Irc.Parser where
 
 import           Data.Char            (isDigit)
+import           Data.HashMap.Strict  (HashMap)
+import qualified Data.HashMap.Strict  as HashMap
 import           Data.List            (all)
-import           Data.Map             (Map)
-import qualified Data.Map             as Map
 import           Data.Text            (Text)
 import qualified Data.Text            as Text
 
@@ -40,11 +40,11 @@ ircEvent = do
                 then return ENumeric
                 else return ERawMsg
 
-twitchTags :: Parser (Map Text [Text])
+twitchTags :: Parser (HashMap Text [Text])
 twitchTags = do
     char '@'
     tags <- twitchTag `sepBy` char ';'
-    return (Map.fromList tags)
+    return (HashMap.fromList tags)
 
 twitchTag :: Parser (Text, [Text])
 twitchTag = do

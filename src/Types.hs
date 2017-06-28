@@ -6,12 +6,12 @@ module Types where
 
 import           Data.Aeson
 import           Data.Aeson.TH
-import qualified Data.ByteString.Lazy   as BytesL
+import           Data.HashMap.Strict    (HashMap)
+import qualified Data.HashMap.Strict    as HashMap
 import           Data.Ini
-import           Data.Map.Strict        (Map)
-import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
 import           Data.Text              (Text, unpack)
+import qualified Data.Text.IO           as Text
 
 import           Control.Concurrent.STM
 import           Control.Lens
@@ -22,25 +22,18 @@ import           Control.Monad.State
 
 import           Lifted                 (atomicallyL)
 
-data BotData = BotData
-    { _strings   :: Map Text Text
-    , _responses :: Map Text Text
-    }
-
 data BotConfig = BotConfig
     { _botNick    :: Text
     , _botPass    :: Text
     , _channel    :: Text
     , _outputChan :: TChan Text
     , _commands   :: [Command]
-    , _botData    :: BotData
+    , _botData    :: Text
     }
 
 initBotConfig :: MonadIO io => [Command] -> Ini -> io (Either String BotConfig)
 initBotConfig cmds ini = do
-    botData' <- liftIO $ do
-        bytes <- BytesL.readFile "bot.json"
-        return (eitherDecode bytes)
+    botData' <- Right <$> liftIO (Text.readFile "bot.json")
 
     outputChan' <- Right <$> atomicallyL newTChan
 
@@ -53,12 +46,12 @@ initBotConfig cmds ini = do
         <*> botData'
 
 newtype BotState = BotState
-    { _dynamicCmds :: Map Text Text
+    { _dynamicCmds :: HashMap Text Text
     }
 
 initBotState :: BotState
 initBotState = BotState
-    { _dynamicCmds = Map.empty
+    { _dynamicCmds = HashMap.empty
     }
 
 newtype Bot a = Bot { unBot :: ReaderT BotConfig (StateT BotState IO) a }
@@ -116,7 +109,6 @@ makeCommand cmdResult cmdInfo = Command
             (makeCommand cmdResult cmdInfo)
             source args (cmdResult source args)
 
-makeLenses ''BotData
 makeLenses ''BotConfig
 makeLenses ''BotState
 
@@ -124,5 +116,4 @@ makeLenses ''CommandInfo
 makeLenses ''Command
 makeLenses ''Invocation
 
-$(deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''BotData)
 $(deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''CommandInfo)

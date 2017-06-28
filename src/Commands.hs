@@ -2,13 +2,15 @@
 
 module Commands where
 
+import           Data.Aeson
 import           Data.Aeson.Lens
+import           Data.HashMap.Strict    (HashMap, (!))
+import qualified Data.HashMap.Strict    as HashMap
 import           Data.List              (intersperse)
-import           Data.Map.Strict        (Map, (!))
-import qualified Data.Map.Strict        as Map
 import           Data.Monoid            ((<>))
 import           Data.Text              (Text)
 import qualified Data.Text              as Text
+import           Data.Vector            (indexM)
 
 import           Control.Lens
 import           Control.Monad.IO.Class (liftIO)
@@ -22,13 +24,13 @@ import           Util                   (stripAt)
 cmdCommands :: CommandInfo -> Command
 cmdCommands = makeCommand $ \source _ -> do
     cmdsStatic <- views commands (map $ view $ info.name)
-    cmdsDynamic <- uses dynamicCmds Map.keys
+    cmdsDynamic <- uses dynamicCmds HashMap.keys
     let cmds = map (Text.cons '!') (cmdsStatic <> cmdsDynamic)
     replyTo source (Text.concat $ intersperse ", " cmds)
 
 cmdHi :: CommandInfo -> Command
 cmdHi = makeCommand $ \source args -> do
-    msg <- views (botData . strings) (! "hi")
+    msg <- view (botData . key "strings" . key "hi" . _String)
 
     case args of
         (target:_) -> replyTo (stripAt target) msg
@@ -36,7 +38,7 @@ cmdHi = makeCommand $ \source args -> do
 
 cmdBye :: CommandInfo -> Command
 cmdBye = makeCommand $ \source args -> do
-    msg <- views (botData . strings) (! "bye")
+    msg <- view (botData . key "strings" . key "bye" . _String)
 
     case args of
         (target:_) -> replyTo (stripAt target) msg
@@ -67,8 +69,8 @@ cmdAdd :: CommandInfo -> Command
 cmdAdd = makeCommand $ \source args ->
     case args of
         (cmdName:cmdText:_) -> do
-            dynamicCmds %= Map.insert cmdName cmdText
-            msg <- views (botData.strings) (! "add")
+            dynamicCmds %= HashMap.insert cmdName cmdText
+            msg <- view (botData . key "strings" . key "add" . _String)
             replyTo source (msg <> cmdName)
 
             saveDynCmds
@@ -78,8 +80,8 @@ cmdRemove :: CommandInfo -> Command
 cmdRemove = makeCommand $ \source args ->
     case args of
         (cmdName:_) -> do
-            dynamicCmds %= Map.delete cmdName
-            msg <- views (botData . strings) (! "remove")
+            dynamicCmds %= HashMap.delete cmdName
+            msg <- view (botData . key "strings" . key "remove" . _String)
             replyTo source (msg <> cmdName)
 
             saveDynCmds
@@ -89,13 +91,13 @@ cmd8ball :: CommandInfo -> Command
 cmd8ball = makeCommand $ \source args ->
     case args of
         [] -> do
-            msg <- view (botData.strings.key "8ball"._Object.key "no_args"._String)
+            msg <- view (botData . key "strings" . key "8ball" . key "no_args" . _String)
             replyTo source msg
-        _ -> do
-            responses <- view (botData.strings._JSON.key "8ball"._Object.key "responses"._Array)
+        _  -> do
+            rs <- views (botData . key "strings" . key "8ball" . key "responses") (^.. values . _String)
 
-            i <- liftIO $ randomRIO (0, length responses - 1)
-            replyTo source (responses ^. nth i . _String)
+            i <- liftIO $ randomRIO (0, length rs - 1)
+            replyTo source (rs !! i)
 
 cmdDynamic :: Text -> Command
 cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpStr)
@@ -108,8 +110,8 @@ cmdDynamic cmdName = makeCommand action (CommandInfo cmdName [] PermAnyone helpS
                 (target:_) -> replyTo (stripAt target) msg
                 _          -> replyTo source msg
 
-staticCommands :: Map Text (CommandInfo -> Command)
-staticCommands = Map.fromList
+staticCommands :: HashMap Text (CommandInfo -> Command)
+staticCommands = HashMap.fromList
     [ ("commands", cmdCommands)
     , ("hi", cmdHi)
     , ("bye", cmdBye)

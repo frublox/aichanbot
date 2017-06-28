@@ -2,7 +2,7 @@
 
 module Command.Parser where
 
-import qualified Data.Map.Strict           as Map
+import qualified Data.HashMap.Strict       as HashMap
 import           Data.Text                 (Text)
 import qualified Data.Text                 as Text
 
@@ -38,7 +38,7 @@ invocation source = do
         isDynCmd cmdName = do
             cmds <- use dynamicCmds
 
-            case Map.lookup cmdName cmds of
+            case HashMap.lookup cmdName cmds of
                 Nothing -> return False
                 _       -> return True
 
