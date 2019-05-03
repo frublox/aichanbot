@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5f4e6136f3de8fc346aeb4cf8be06a5b9769037c82bdeab135d774d550c69d26
+-- hash: f27064d9762765f000c165e3ff26ecb77d6a69a8aff1521a6954df9eb41a2e29
 
 name:           aichanbot
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      Bot.Command
       Bot.Conduit
       Bot.Config
       Bot.Env
@@ -37,7 +38,6 @@ library
       Command.Info
       Command.Parser
       Command.Permissions
-      Command.Run
       Command.Type
       Irc
       Irc.Event

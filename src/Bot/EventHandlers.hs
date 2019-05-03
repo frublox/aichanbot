@@ -14,13 +14,13 @@ import           Data.Text           (Text)
 import qualified Data.Text           as Text
 import           Text.Megaparsec     (parseMaybe)
 
+import           Bot.Command         (runCommand)
 import           Bot.Monad           (MonadBot)
 import qualified Bot.Monad           as Bot
 import qualified Bot.Util            as Bot
 import qualified Command.Info        as Info
 import           Command.Parser      (commandWithArgsP)
 import           Command.Permissions as Perms
-import           Command.Run         (runCommand)
 import           Irc.Event           (Event (..))
 import           Irc.EventHandler    (EventHandler (..))
 import           Irc.Parser          (msgSourceP, msgTextP)

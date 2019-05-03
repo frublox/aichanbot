@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Command.Run
+module Bot.Command
     ( runCommand
     ) where
 
