@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f27064d9762765f000c165e3ff26ecb77d6a69a8aff1521a6954df9eb41a2e29
+-- hash: 152a722e523bf7ca32fb4a0eb26e2c2e1fb491d1c930b6c726b9494bbce399a1
 
 name:           aichanbot
 version:        0.1.0.0
@@ -44,6 +44,7 @@ library
       Irc.EventHandler
       Irc.Parser
       Lifted
+      Paths
       Util
   other-modules:
       Paths_aichanbot
@@ -57,10 +58,10 @@ library
     , conduit-combinators
     , conduit-extra
     , containers
+    , directory
     , either
     , exceptions
     , hashable
-    , ini
     , lens
     , lens-aeson
     , lifted-base
@@ -90,10 +91,10 @@ executable aichanbot-exe
     , conduit-combinators
     , conduit-extra
     , containers
+    , directory
     , either
     , exceptions
     , hashable
-    , ini
     , lens
     , lens-aeson
     , lifted-base
@@ -124,10 +125,10 @@ test-suite aichanbot-test
     , conduit-combinators
     , conduit-extra
     , containers
+    , directory
     , either
     , exceptions
     , hashable
-    , ini
     , lens
     , lens-aeson
     , lifted-base

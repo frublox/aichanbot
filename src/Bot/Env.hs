@@ -8,7 +8,7 @@ module Bot.Env
     , outputChan
     , cmdToInfo
     , dynamicCmds
-    , botData
+    , strings
 
     , init
     ) where
@@ -16,17 +16,17 @@ module Bot.Env
 import           Control.Concurrent.STM (TChan, TVar, newTChan, newTChanIO,
                                          newTVarIO)
 import           Control.Lens
-import           Control.Monad          (forM, mapM)
+import           Control.Monad          (forM, mapM, unless)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Aeson             (eitherDecode)
 import qualified Data.ByteString.Lazy   as BytesL
 import           Data.HashMap.Strict    (HashMap)
 import qualified Data.HashMap.Strict    as HashMap
-import           Data.Ini
 import           Data.Text              (Text)
 import qualified Data.Text              as Text
 import qualified Data.Text.IO           as Text
 import           Prelude                hiding (init)
+import           System.Directory       (doesFileExist)
 import           System.Exit            (die)
 import           Text.Megaparsec        (runParser, showErrorComponent)
 
@@ -36,20 +36,25 @@ import           Command.Parser         (commandP)
 import qualified Command.Permissions    as Perms
 import           Command.Type           (Command)
 import qualified Command.Type           as Cmd
+import qualified Paths
 
 data Env = Env
     { _config      :: Config
     , _outputChan  :: TChan Text
     , _cmdToInfo   :: HashMap Command CommandInfo
     , _dynamicCmds :: TVar (HashMap Text Command)
-    , _botData     :: Text
+    , _strings     :: Text
     }
 makeLenses ''Env
 
 init :: MonadIO io => io Env
 init = liftIO $ do
+    dynamicCmdsFileExists <- doesFileExist Paths.dynamicCmds
+    unless dynamicCmdsFileExists $
+        BytesL.writeFile Paths.dynamicCmds "{}"
+
     (config', cmdToInfo', dynamicCmds') <- do
-        let jsonFiles = ["config.json", "cmds.json", "dynamic_cmds.json"]
+        let jsonFiles = [Paths.config, Paths.cmds, Paths.dynamicCmds]
         [configJson, cmdInfosJson, dynCmdsJson] <- mapM BytesL.readFile jsonFiles
 
         (config', cmdInfos, dynCmdsMap) <- either die pure $ do
@@ -70,14 +75,14 @@ init = liftIO $ do
         (,,) <$> pure config' <*> pure cmdToInfo' <*> newTVarIO (fmap Cmd.Dynamic dynCmdsMap)
 
     outputChan' <- newTChanIO
-    botData' <- Text.readFile "bot.json"
+    strings' <- Text.readFile Paths.strings
 
     pure $ Env
         { _config = config'
         , _outputChan = outputChan'
         , _cmdToInfo = cmdToInfo'
         , _dynamicCmds = dynamicCmds'
-        , _botData = botData'
+        , _strings = strings'
         }
 
     where

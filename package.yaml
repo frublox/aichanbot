@@ -24,7 +24,6 @@ dependencies:
 - bytestring
 - text
 - lens
-- ini
 - stm
 - lifted-base
 - mtl
@@ -42,6 +41,7 @@ dependencies:
 - unordered-containers
 - vector
 - hashable
+- directory
 
 library:
   source-dirs: src

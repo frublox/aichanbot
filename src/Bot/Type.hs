@@ -27,6 +27,7 @@ import           Command.Parser         (commandP)
 import           Command.Type           (Command)
 import qualified Command.Type           as Cmd
 import           Lifted                 (atomicallyL, readTVarIOL)
+import qualified Paths
 import           Util                   (readAllTChan)
 
 newtype Bot a = Bot { unBot :: ReaderT Env IO a }
@@ -35,7 +36,7 @@ newtype Bot a = Bot { unBot :: ReaderT Env IO a }
 
 instance MonadBot Bot where
     getConfig = Bot (view config)
-    getStrings = Bot (view botData)
+    getStrings = Bot (view strings)
 
     getCmds = Bot $ views cmdToInfo HashMap.keys
     getCmdInfo cmd = Bot $
@@ -53,7 +54,7 @@ instance MonadBot Bot where
     saveDynCmds = Bot $ do
         cmds <- view dynamicCmds >>= readTVarIOL
         let cmdsText = fmap show cmds
-        liftIO $ BytesL.writeFile "dynamic_cmds.json" (encode cmdsText)
+        liftIO $ BytesL.writeFile Paths.dynamicCmds (encode cmdsText)
 
     sendMsg msg = Bot $ do
         chan <- view outputChan
