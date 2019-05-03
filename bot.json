@@ -1,7 +1,14 @@
 {
-    "strings": {
+    "cmds": {
         "hi": "hi! KonCha",
         "bye": "cya! TehePelo",
+        "aliases": {
+            "unknownCmd": "oWo whats this command...? (command not found)",
+            "none": ">w< no aliases for that command..."
+        },
+        "help": {
+            "unknownCmd": "oWo whats this command...? (command not found)"
+        },
         "add": "Added command !",
         "remove": "Removed command !",
         "8ball": {

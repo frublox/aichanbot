@@ -20,13 +20,13 @@
     {
         "name": "add",
         "aliases": [],
-        "permissions": "modonly",
+        "permissions": "moderator",
         "help": "Usage: !add <command> <command text>"
     },
     {
         "name": "remove",
         "aliases": [],
-        "permissions": "modonly",
+        "permissions": "moderator",
         "help": "Usage: !remove <command to remove>"
     },
     {

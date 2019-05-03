@@ -1,52 +1,49 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Command.Parser where
+module Command.Parser
+    ( commandP
+    , argsP
+    , commandWithArgsP
+    ) where
 
-import qualified Data.HashMap.Strict       as HashMap
-import           Data.Text                 (Text)
-import qualified Data.Text                 as Text
+import           Control.Applicative  (liftA2)
 
-import           Control.Lens              hiding (noneOf)
-import           Control.Monad.Trans.Class
+import           Data.Text            (Text)
+import qualified Data.Text            as Text
 
 import           Text.Megaparsec
-import           Text.Megaparsec.Text
+import           Text.Megaparsec.Char
 
-import           Bot
-import           Commands
-import           Types
+import           Command.Type         (Command)
+import qualified Command.Type         as Cmd
 
-invocation :: Text -> ParsecT Dec Text Bot Invocation
-invocation source = do
-    char '!'
-    cmdName <- Text.pack <$> many alphaNumChar
-    args <- fmap (map Text.pack) $ space *> many (quotedStr <|> word <* space)
+type Parser = Parsec () Text
 
-    dynCmd <- lift (isDynCmd cmdName)
+commandP :: Parser Command
+commandP = do
+    cmdName <- char '!' *> many alphaNumChar
+    pure $ case cmdName of
+        "cmds"    -> Cmd.Cmds
+        "hi"      -> Cmd.Hi
+        "bye"     -> Cmd.Bye
+        "aliases" -> Cmd.Aliases
+        "help"    -> Cmd.Help
+        "add"     -> Cmd.AddCmd
+        "remove"  -> Cmd.RemoveCmd
+        "8ball"   -> Cmd.EightBall
+        txt       -> Cmd.Dynamic (Text.pack txt)
 
-    if dynCmd
-        then
-             return $ runCmd (cmdDynamic cmdName) source args
-        else do
-
-            cmd <- lift (lookupCommand cmdName)
-
-            maybe (fail "could not find cmd") (return . \c -> runCmd c source args) cmd
-
+argsP :: Parser [Text]
+argsP = do
+    args <- space *> many (quotedStr <|> word <* space)
+    pure $ fmap Text.pack args
     where
-        isDynCmd :: Text -> Bot Bool
-        isDynCmd cmdName = do
-            cmds <- use dynamicCmds
+        quotedStr :: Parser String
+        quotedStr = char '\"' *> many (anySingleBut '\"') <* char '\"'
 
-            case HashMap.lookup cmdName cmds of
-                Nothing -> return False
-                _       -> return True
+        word :: Parser String
+        -- TODO: Use space instead of skipSome (oneOf [' '])?
+        word = someTill anySingle (skipSome (oneOf [' ']) <|> eof)
 
-        quotedStr :: Monad m => ParsecT Dec Text m String
-        quotedStr = char '\"' *> many (noneOf ['\"']) <* char '\"'
-
-        word :: Monad m => ParsecT Dec Text m String
-        word = someTill anyChar (skipSome (oneOf [' ']) <|> eof)
-
-commandName :: Parser Text
-commandName = Text.pack <$> (char '!' *> many alphaNumChar)
+commandWithArgsP :: Parser (Command, [Text])
+commandWithArgsP = liftA2 (,) commandP argsP
