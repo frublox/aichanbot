@@ -14,12 +14,13 @@ import qualified Data.HashMap.Strict  as HashMap
 import           Data.List            (all)
 import           Data.Text            (Text)
 import qualified Data.Text            as Text
+import           Data.Void            (Void)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
 import           Irc.Event            (Event (..))
 
-type Parser = Parsec () Text
+type Parser = Parsec Void Text
 
 eventP :: Parser Event
 eventP = do

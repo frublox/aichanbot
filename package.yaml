@@ -42,6 +42,7 @@ dependencies:
 - vector
 - hashable
 - directory
+- monad-logger
 
 library:
   source-dirs: src

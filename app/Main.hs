@@ -44,5 +44,3 @@ onConnect = do
     Bot.sendMsg ("PASS :" <> pass)
     Bot.sendMsg ("NICK :" <> nick)
     Bot.sendMsg ("JOIN :" <> chan)
-
-

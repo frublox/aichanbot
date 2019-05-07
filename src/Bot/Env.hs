@@ -7,6 +7,7 @@ module Bot.Env
     , config
     , outputChan
     , cmdToInfo
+    , textToCmd
     , dynamicCmds
     , strings
 
@@ -28,11 +29,12 @@ import qualified Data.Text.IO           as Text
 import           Prelude                hiding (init)
 import           System.Directory       (doesFileExist)
 import           System.Exit            (die)
-import           Text.Megaparsec        (runParser, showErrorComponent)
+import           Text.Megaparsec        (errorBundlePretty, runParser)
 
 import           Bot.Config             (Config)
-import           Command.Info           (CommandInfo (..), name)
-import           Command.Parser         (commandP)
+import           Command.Info           (CommandInfo (..), aliases, dynCmdInfo,
+                                         name)
+import           Command.Parser         (commandFromNameP)
 import qualified Command.Permissions    as Perms
 import           Command.Type           (Command)
 import qualified Command.Type           as Cmd
@@ -42,6 +44,7 @@ data Env = Env
     { _config      :: Config
     , _outputChan  :: TChan Text
     , _cmdToInfo   :: HashMap Command CommandInfo
+    , _textToCmd   :: HashMap Text Command
     , _dynamicCmds :: TVar (HashMap Text Command)
     , _strings     :: Text
     }
@@ -53,7 +56,7 @@ init = liftIO $ do
     unless dynamicCmdsFileExists $
         BytesL.writeFile Paths.dynamicCmds "{}"
 
-    (config', cmdToInfo', dynamicCmds') <- do
+    (config', cmdToInfo', textToCmd', dynamicCmds') <- do
         let jsonFiles = [Paths.config, Paths.cmds, Paths.dynamicCmds]
         [configJson, cmdInfosJson, dynCmdsJson] <- mapM BytesL.readFile jsonFiles
 
@@ -63,16 +66,27 @@ init = liftIO $ do
             dynCmds <- eitherDecode dynCmdsJson
             pure (config', cmdInfos, dynCmds)
 
-        cmdInfoPairs <- forM (cmdInfos) $ \info -> do
-            let result = runParser commandP "" (info^.name)
-            either (die . show) (\cmd -> pure (cmd, info)) result
+        cmdInfoPairs <- forM cmdInfos $ \info -> do
+            let result = runParser commandFromNameP "" (info^.name)
+            either (die . errorBundlePretty) (\cmd -> pure (cmd, info)) result
 
-        let dynCmds = HashMap.keys (dynCmdsMap)
-        let dynCmdInfoPairs = fmap (\txt -> (Cmd.Dynamic txt, dynCmdInfo txt)) dynCmds
+        let dynCmdInfoPairs = fmap 
+                (\(txt, val) -> (Cmd.Dynamic val, dynCmdInfo txt)) 
+                (HashMap.toList (dynCmdsMap))
 
-        let cmdToInfo' = HashMap.fromList (cmdInfoPairs <> dynCmdInfoPairs)
+        let textToCmd' = HashMap.fromList $
+                concat $ (flip map) cmdInfoPairs $
+                    \(cmd, info) ->
+                        let names = view name info : view aliases info
+                        in  fmap (\n -> (n, cmd)) names
 
-        (,,) <$> pure config' <*> pure cmdToInfo' <*> newTVarIO (fmap Cmd.Dynamic dynCmdsMap)
+        let cmdToInfo' = HashMap.fromList (cmdInfoPairs)
+
+        (,,,)
+            <$> pure config'
+            <*> pure cmdToInfo'
+            <*> pure textToCmd'
+            <*> newTVarIO (fmap Cmd.Dynamic dynCmdsMap)
 
     outputChan' <- newTChanIO
     strings' <- Text.readFile Paths.strings
@@ -81,15 +95,7 @@ init = liftIO $ do
         { _config = config'
         , _outputChan = outputChan'
         , _cmdToInfo = cmdToInfo'
+        , _textToCmd = textToCmd'
         , _dynamicCmds = dynamicCmds'
         , _strings = strings'
         }
-
-    where
-        dynCmdInfo :: Text -> CommandInfo
-        dynCmdInfo txt = CommandInfo
-            { _name = txt
-            , _aliases = []
-            , _permissions = Perms.Anyone
-            , _help = "Usage !" <> txt <> " [optional username, w/ or w/out @]"
-            }

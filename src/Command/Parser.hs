@@ -1,49 +1,74 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Command.Parser
-    ( commandP
+    ( commandFromNameP
+    , commandP
+    , unprefixedCommandP
+    , maybePrefixedCommandP
     , argsP
-    , commandWithArgsP
     ) where
 
-import           Control.Applicative  (liftA2)
-
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
-
+import           Control.Applicative       (liftA2, (<|>))
+import           Control.Monad             (void)
+import           Control.Monad.Trans.Class (lift)
+import           Data.Text                 (Text)
+import qualified Data.Text                 as Text
+import           Data.Void                 (Void)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Command.Type         (Command)
-import qualified Command.Type         as Cmd
+import           Command.Type              (Command)
+import qualified Command.Type              as Cmd
 
-type Parser = Parsec () Text
+type Parser = Parsec Void Text
+type ParserM = ParsecT Void Text
 
-commandP :: Parser Command
-commandP = do
-    cmdName <- char '!' *> many alphaNumChar
+commandFromNameP :: Parser Command
+commandFromNameP = do
+    cmdName <- many alphaNumChar
     pure $ case cmdName of
-        "cmds"    -> Cmd.Cmds
-        "hi"      -> Cmd.Hi
-        "bye"     -> Cmd.Bye
-        "aliases" -> Cmd.Aliases
-        "help"    -> Cmd.Help
-        "add"     -> Cmd.AddCmd
-        "remove"  -> Cmd.RemoveCmd
-        "8ball"   -> Cmd.EightBall
-        txt       -> Cmd.Dynamic (Text.pack txt)
+        "hi"       -> Cmd.Hi
+        "bye"      -> Cmd.Bye
+        "commands" -> Cmd.Cmds
+        "add"      -> Cmd.AddCmd
+        "remove"   -> Cmd.RemoveCmd
+        "help"     -> Cmd.Help
+        "aliases"  -> Cmd.Aliases
+        "8ball"    -> Cmd.EightBall
+        str        -> Cmd.Dynamic (Text.pack str)
+
+commandP :: Monad m => (Text -> m (Maybe Command)) -> ParserM m Command
+commandP resolveCmd = do
+    char '!'
+    unprefixedCommandP resolveCmd
+
+unprefixedCommandP :: Monad m => (Text -> m (Maybe Command)) -> ParserM m Command
+unprefixedCommandP resolveCmd = do
+    cmdName <- many alphaNumChar
+    result <- lift $ resolveCmd (Text.pack cmdName)
+    case result of
+        Nothing  -> fail ("Couldn't resolve command: " <> cmdName)
+        Just cmd -> pure cmd
+
+maybePrefixedCommandP :: Monad m => (Text -> m (Maybe Command)) -> ParserM m Command
+maybePrefixedCommandP resolveCmd = try (commandP resolveCmd) <|> unprefixedCommandP resolveCmd
 
 argsP :: Parser [Text]
 argsP = do
-    args <- space *> many (quotedStr <|> word <* space)
+    char '!'
+    many alphaNumChar
+    space
+    args <- many (quotedStr <|> word <* space)
     pure $ fmap Text.pack args
     where
+        quote :: Char
+        quote = '\"'
+
         quotedStr :: Parser String
-        quotedStr = char '\"' *> many (anySingleBut '\"') <* char '\"'
+        quotedStr = between (char quote) (char quote) (many (anySingleBut '\"'))
 
         word :: Parser String
-        -- TODO: Use space instead of skipSome (oneOf [' '])?
-        word = someTill anySingle (skipSome (oneOf [' ']) <|> eof)
+        word = someTill anySingle (space1 <|> eof)
 
-commandWithArgsP :: Parser (Command, [Text])
-commandWithArgsP = liftA2 (,) commandP argsP
+-- commandWithArgsP :: Monad m => (Text -> m (Maybe Command)) -> Parser m (Command, [Text])
+-- commandWithArgsP resolveCmd = liftA2 (,) (commandP) argsP

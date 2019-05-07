@@ -21,9 +21,9 @@ data Permissions
 instance FromJSON Permissions where
     parseJSON = withText "Permission" $ \val ->
         case val of
-            "anyone"  -> return Anyone
-            "modonly" -> return Moderator
-            perm      -> fail $ "Invalid permission: '" <> unpack perm <> "'"
+            "anyone" -> return Anyone
+            "moderator" -> return Moderator
+            perm -> fail $ "Invalid permission: '" <> unpack perm <> "'"
 
 instance ToJSON Permissions where
     toJSON Anyone    = String "anyone"

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Bot.Conduit
     ( handler
@@ -17,8 +18,9 @@ import           Control.Concurrent        (forkIO, threadDelay)
 import           Control.Concurrent.STM
 import           Control.Monad             (forM_, forever, unless, when)
 import           Control.Monad.IO.Class    (liftIO)
+import           Control.Monad.Logger
 import           Control.Monad.Trans.Class (lift)
-import           Data.ByteString.Char8     as BytesC8
+import qualified Data.ByteString.Char8     as BytesC8
 import           Data.Text                 (Text)
 import qualified Data.Text                 as Text
 import           Data.Text.Encoding        (decodeUtf8, encodeUtf8)
@@ -32,48 +34,41 @@ import           Irc.EventHandler          (EventHandler (..))
 import           Irc.Parser                (eventP)
 import           Lifted                    (atomicallyL, readTVarIOL)
 
--- TODO: Get rid of (most) MonadIO constraints
-
-handler :: (MonadIO m, MonadBot m) => [EventHandler m] -> ConduitT Text Text m ()
+handler :: (MonadBot m, MonadLogger m) => [EventHandler m] -> ConduitT Text Text m ()
 handler handlers = awaitForever $ \msg -> do
-    let event = parse eventP "" msg
+    case parse eventP "" msg of
+        Left err    -> $(logErrorSH) err
+        Right event -> runHandlers msg event
 
-    -- TODO: Don't die, just log and move on
-    either (liftIO . die . show) (runHandlers msg) event
-
-    msgs <- lift Bot.checkMsgs
-    yieldMany msgs
-
+    lift Bot.checkMsgs >>= yieldMany
     where
         runHandlers msg event = forM_ handlers (handleEvent event msg)
         handleEvent event msg (EventHandler e f) =
             when (e == event) $ lift (f msg)
 
 newlineStripper :: Monad m => ConduitT Text Text m ()
-newlineStripper = awaitForever $ \msg -> do
-    let msg' = Text.dropEnd 2 msg
-    yield msg'
+newlineStripper = awaitForever $ \msg ->
+    yield (Text.dropEnd 2 msg)
 
 newlineAdder :: Monad m => ConduitT Text Text m ()
 newlineAdder = awaitForever $ \msg ->
     yield (msg <> "\r\n")
 
-serverLogger :: MonadIO m => ConduitT Text Text m ()
+serverLogger :: MonadLogger m => ConduitT Text Text m ()
 serverLogger = awaitForever $ \msg -> do
     let msg' = Text.replace "\n" "\n--> " msg
-    liftIO $ BytesC8.putStrLn $ encodeUtf8 ("--> " <> msg')
+    mapM_ logInfoN $ Text.lines ("--> " <> msg')
     yield msg
 
-clientLogger :: MonadIO m => ConduitT Text Text m ()
+clientLogger :: MonadLogger m => ConduitT Text Text m ()
 clientLogger = awaitForever $ \msg -> do
-    liftIO $ BytesC8.putStrLn $ encodeUtf8 ("<-- " <> msg)
+    logInfoN ("<-- " <> msg)
     yield msg
 
 onConnectC :: MonadBot m => m () -> ConduitT Text Text m ()
 onConnectC action = do
     lift action
-    msgs <- lift Bot.checkMsgs
-    yieldMany msgs
+    lift Bot.checkMsgs >>= yieldMany
     awaitForever yield
 
 rateLimiter :: MonadIO m => ConduitT Text Text m ()
@@ -102,7 +97,7 @@ rateLimiter = do
 
     awaitForever checkAndYield
 
-botC :: (MonadIO m, MonadBot m)
+botC :: (MonadIO m, MonadBot m, MonadLogger m)
     => [EventHandler m]
     -> (forall m. MonadBot m => m ())
     -> ConduitT Text Text m ()
