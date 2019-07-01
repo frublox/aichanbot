@@ -44,4 +44,5 @@ class (Monad m) => MonadBot m where
     checkMsgs :: m [Text]
     sendMsg :: Text -> m ()
 
+    -- TODO move into separate typeclass
     randomR :: Random a => (a, a) -> m a
