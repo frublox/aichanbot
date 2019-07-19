@@ -24,3 +24,5 @@ cabal.project.local
 
 config.json
 dynamic_cmds.json
+
+.vscode/

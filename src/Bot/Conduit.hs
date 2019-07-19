@@ -101,7 +101,8 @@ botC :: (MonadIO m, MonadBot m, MonadLogger m)
     => [EventHandler m]
     -> (forall m. MonadBot m => m ())
     -> ConduitT Text Text m ()
-botC handlers onConnect = newlineStripper
+botC handlers onConnect = 
+    newlineStripper
     .| serverLogger
     .| handler handlers
     .| onConnectC onConnect

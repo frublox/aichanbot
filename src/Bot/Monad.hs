@@ -35,6 +35,7 @@ class (Monad m) => MonadBot m where
     resolveCmd :: Text -> m (Maybe Command)
     getCmdInfo :: Command -> m CommandInfo
 
+    -- Should probably be split into a different typeclass
     getDynCmd :: Text -> m Command
     getDynCmdNames :: m [Text]
     addDynCmd :: Text -> Text -> m ()
