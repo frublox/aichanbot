@@ -14,9 +14,8 @@ import           Data.List              (intersperse)
 import           Data.Text              (Text)
 import qualified Data.Text              as Text
 import           Data.Vector            (indexM)
-import           System.Random
 import           Text.Megaparsec        (runParserT, try)
-
+import Random.Monad (MonadRandom, randomR)
 import           Bot.Monad              (MonadBot)
 import qualified Bot.Monad              as Bot
 import qualified Bot.Util               as Bot
@@ -27,7 +26,7 @@ import           Command.Type           (Command)
 import qualified Command.Type           as Cmd
 import           Util                   (stripAt)
 
-runCommand :: MonadBot m => Command -> Text -> [Text] -> m ()
+runCommand :: (MonadRandom m, MonadBot m) => Command -> Text -> [Text] -> m ()
 runCommand Cmd.Cmds src _ = do
     cmdNames <- fmap (view name) <$> (Bot.getCmds >>= mapM Bot.getCmdInfo)
     dynCmdNames <- Bot.getDynCmdNames
@@ -111,7 +110,7 @@ runCommand Cmd.EightBall src args =
             rs <- views (key "cmds" . key "8ball" . key "responses") (^.. values . _String)
                 <$> Bot.getStrings
 
-            i <- Bot.randomR (0, length rs - 1)
+            i <- randomR (0, length rs - 1)
             Bot.replyTo src (rs !! i)
 
 runCommand (Cmd.Dynamic txt) src args =

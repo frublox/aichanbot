@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.1.
+-- This file has been generated from package.yaml by hpack version 0.31.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d0153ddee3404803c7c074a0411d0549e6c424370d6c1425af9f677cdb278877
+-- hash: 1f5596b8e7e56f45167db1dbd8cb8a21f6c225d5dc9ed72c82344d78bc0636e9
 
 name:           aichanbot
 version:        0.1.0.0
@@ -46,6 +46,7 @@ library
       Irc.Parser
       Lifted
       Paths
+      Random.Monad
       Util
   other-modules:
       Paths_aichanbot

@@ -23,6 +23,7 @@ import qualified Bot.Util             as Bot
 import qualified Command.Info         as Info
 import           Command.Parser       (argsP, commandP)
 import           Command.Permissions  as Perms
+import Random.Monad (MonadRandom, randomR)
 import           Irc.Event            (Event (..))
 import           Irc.EventHandler     (EventHandler (..))
 import           Irc.Parser           (msgSourceP, msgTextP)
@@ -32,7 +33,7 @@ pingHandler :: MonadBot m => EventHandler m
 pingHandler = EventHandler EPing $ \msg ->
     Bot.sendMsg ("PONG :" <> Text.drop 6 msg)
 
-msgHandler :: (MonadLogger m, MonadBot m) => EventHandler m
+msgHandler :: (MonadLogger m, MonadRandom m, MonadBot m) => EventHandler m
 msgHandler = EventHandler EPrivMsg $ \msg -> do
     let parsedSource = runParser msgSourceP "" msg
     let parsedText = runParser msgTextP "" msg
@@ -54,7 +55,7 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
                     let response = view (key "responses" . key k . _String) strs
                     Bot.replyTo src response
 
-        handleCmd :: (MonadLogger m, MonadBot m) => Text -> Permissions -> Text -> m ()
+        handleCmd :: (MonadLogger m, MonadRandom m, MonadBot m) => Text -> Permissions -> Text -> m ()
         handleCmd src srcPerms text = do
             parsedCmd <- runParserT (commandP Bot.resolveCmd) "" text
             let parsedArgs = runParser argsP "" text
