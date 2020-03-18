@@ -1,6 +1,7 @@
 module Irc.Event
     ( Event(..)
-    ) where
+    )
+where
 
 data Event
     = EPrivMsg

@@ -3,7 +3,8 @@ module Paths
     , cmds
     , dynamicCmds
     , strings
-    ) where
+    )
+where
 
 config :: FilePath
 config = "config.json"

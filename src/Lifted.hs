@@ -1,8 +1,16 @@
 module Lifted where
 
-import           Control.Concurrent.STM (STM, TVar, atomically, readTVarIO)
-import           Control.Monad          (MonadPlus, mzero)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Concurrent.STM         ( STM
+                                                , TVar
+                                                , atomically
+                                                , readTVarIO
+                                                )
+import           Control.Monad                  ( MonadPlus
+                                                , mzero
+                                                )
+import           Control.Monad.IO.Class         ( MonadIO
+                                                , liftIO
+                                                )
 
 -- atomically, but generalised to MonadIO
 atomicallyL :: MonadIO io => STM a -> io a

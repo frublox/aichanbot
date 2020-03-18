@@ -1,10 +1,11 @@
 module Irc.EventHandler
     ( EventHandler(..)
-    ) where
+    )
+where
 
-import           Data.Text (Text)
+import           Data.Text                      ( Text )
 
-import           Irc.Event (Event)
+import           Irc.Event                      ( Event )
 
 data EventHandler m = EventHandler
     { getEvent    :: Event

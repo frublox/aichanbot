@@ -4,15 +4,16 @@ module Bot.Util
     ( privMsg
     , replyTo
     , replyHelpStr
-    ) where
+    )
+where
 
 import           Control.Lens
-import           Data.Text    (Text)
+import           Data.Text                      ( Text )
 
-import qualified Bot.Config   as Config
+import qualified Bot.Config                    as Config
 import           Bot.Monad
-import qualified Command.Info as Info
-import           Command.Type (Command)
+import qualified Command.Info                  as Info
+import           Command.Type                   ( Command )
 
 privMsg :: MonadBot m => Text -> m ()
 privMsg msg = do

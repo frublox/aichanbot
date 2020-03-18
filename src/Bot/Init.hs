@@ -2,13 +2,14 @@
 
 module Bot.Init
     ( onConnect
-    ) where
+    )
+where
 
 import           Control.Lens
 
-import qualified Bot.Config   as Config
-import           Bot.Monad    (MonadBot)
-import qualified Bot.Monad    as Bot
+import qualified Bot.Config                    as Config
+import           Bot.Monad                      ( MonadBot )
+import qualified Bot.Monad                     as Bot
 
 onConnect :: MonadBot m => m ()
 onConnect = do

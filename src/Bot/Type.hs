@@ -42,7 +42,9 @@ import qualified Command.Type                  as Cmd
 import           Lifted                         ( atomicallyL
                                                 , readTVarIOL
                                                 )
-import Random.Monad (MonadRandom, randomR)                                                                            
+import           Random.Monad                   ( MonadRandom
+                                                , randomR
+                                                )
 import qualified Paths
 import           Util                           ( readAllTChan )
 

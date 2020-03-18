@@ -2,8 +2,8 @@
 
 module Util where
 
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
+import           Data.Text                      ( Text )
+import qualified Data.Text                     as Text
 
 import           Control.Concurrent.STM
 
@@ -22,7 +22,6 @@ textContains y x = case Text.breakOn x y of
     _       -> True
 
 stripAt :: Text -> Text
-stripAt txt
-    | Text.null txt = txt
-    | Text.head txt == '@' = Text.tail txt
-    | otherwise = txt
+stripAt txt | Text.null txt        = txt
+            | Text.head txt == '@' = Text.tail txt
+            | otherwise            = txt

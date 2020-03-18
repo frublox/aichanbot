@@ -5,23 +5,27 @@
 module Command.Type
     ( Command(..)
     , toText
-    ) where
+    )
+where
 
-import           GHC.Generics                    (Generic)
+import           GHC.Generics                   ( Generic )
 
 import           Control.Lens
 
 import           Data.Aeson
 import           Data.Aeson.TH
-import           Data.Char                       (toLower)
-import           Data.Hashable                   (Hashable)
-import           Data.Text                       (Text)
-import qualified Data.Text                       as Text
+import           Data.Char                      ( toLower )
+import           Data.Hashable                  ( Hashable )
+import           Data.Text                      ( Text )
+import qualified Data.Text                     as Text
 
-import           Text.ParserCombinators.ReadPrec (look)
-import           Text.Read                       (Read, readPrec)
+import           Text.ParserCombinators.ReadPrec
+                                                ( look )
+import           Text.Read                      ( Read
+                                                , readPrec
+                                                )
 
-import           Command.Info                    (CommandInfo)
+import           Command.Info                   ( CommandInfo )
 
 data Command
     = Cmds
@@ -48,4 +52,4 @@ instance Show Command where
 
 toText :: Command -> Text
 toText (Dynamic txt) = txt
-toText cmd = Text.pack (show cmd)
+toText cmd           = Text.pack (show cmd)

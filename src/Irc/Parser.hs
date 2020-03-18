@@ -6,19 +6,20 @@ module Irc.Parser
     , twitchTagsP
     , msgTextP
     , msgSourceP
-    ) where
+    )
+where
 
-import           Data.Char            (isDigit)
-import           Data.HashMap.Strict  (HashMap)
-import qualified Data.HashMap.Strict  as HashMap
-import           Data.List            (all)
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
-import           Data.Void            (Void)
+import           Data.Char                      ( isDigit )
+import           Data.HashMap.Strict            ( HashMap )
+import qualified Data.HashMap.Strict           as HashMap
+import           Data.List                      ( all )
+import           Data.Text                      ( Text )
+import qualified Data.Text                     as Text
+import           Data.Void                      ( Void )
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Irc.Event            (Event (..))
+import           Irc.Event                      ( Event(..) )
 
 type Parser = Parsec Void Text
 
@@ -33,22 +34,19 @@ eventP = do
 
     pure $ case event of
         "PRIVMSG" -> EPrivMsg
-        "NOTICE" -> ENotice
-        "NICK" -> ENick
-        "JOIN" -> EJoin
-        "PART" -> EPart
-        "QUIT" -> EQuit
-        "MODE" -> EMode
-        "TOPIC" -> ETopic
-        "INVITE" -> EInvite
-        "KICK" -> EKick
-        "PING" -> EPing
-        "PONG" -> EPong
+        "NOTICE"  -> ENotice
+        "NICK"    -> ENick
+        "JOIN"    -> EJoin
+        "PART"    -> EPart
+        "QUIT"    -> EQuit
+        "MODE"    -> EMode
+        "TOPIC"   -> ETopic
+        "INVITE"  -> EInvite
+        "KICK"    -> EKick
+        "PING"    -> EPing
+        "PONG"    -> EPong
 
-        _ ->
-            if all isDigit event
-                then ENumeric
-                else ERawMsg
+        _         -> if all isDigit event then ENumeric else ERawMsg
 
 twitchTagP :: Parser (Text, [Text])
 twitchTagP = do

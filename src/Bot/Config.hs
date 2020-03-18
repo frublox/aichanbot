@@ -5,13 +5,14 @@ module Bot.Config
     , nick
     , pass
     , channel
-    ) where
+    )
+where
 
 import           Control.Lens
 
 import           Data.Aeson.TH
 
-import           Data.Text     (Text)
+import           Data.Text                      ( Text )
 
 data Config = Config
     { _nick    :: Text

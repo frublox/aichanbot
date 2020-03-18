@@ -7,16 +7,16 @@ module Command.Info
     , aliases
     , permissions
     , help
-
     , dynCmdInfo
-    ) where
+    )
+where
 
 import           Control.Lens
 import           Data.Aeson.TH
-import           Data.Text           (Text)
+import           Data.Text                      ( Text )
 
-import           Command.Permissions (Permissions)
-import qualified Command.Permissions as Perms
+import           Command.Permissions            ( Permissions )
+import qualified Command.Permissions           as Perms
 
 data CommandInfo = CommandInfo
     { _name        :: Text
@@ -30,8 +30,8 @@ $(deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''CommandInfo)
 
 dynCmdInfo :: Text -> CommandInfo
 dynCmdInfo txt = CommandInfo
-    { _name = txt
-    , _aliases = []
+    { _name        = txt
+    , _aliases     = []
     , _permissions = Perms.Anyone
-    , _help = "Usage !" <> txt <> " [optional username, w/ or w/out @]"
+    , _help        = "Usage !" <> txt <> " [optional username, w/ or w/out @]"
     }

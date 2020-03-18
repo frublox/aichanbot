@@ -11,48 +11,59 @@ module Bot.Conduit
     , onConnectC
     , rateLimiter
     , botC
-    ) where
+    )
+where
 
 import           Conduit
-import           Control.Concurrent        (forkIO, threadDelay)
+import           Control.Concurrent             ( forkIO
+                                                , threadDelay
+                                                )
 import           Control.Concurrent.STM
-import           Control.Monad             (forM_, forever, unless, when)
-import           Control.Monad.IO.Class    (liftIO)
+import           Control.Monad                  ( forM_
+                                                , forever
+                                                , unless
+                                                , when
+                                                )
+import           Control.Monad.IO.Class         ( liftIO )
 import           Control.Monad.Logger
-import           Control.Monad.Trans.Class (lift)
-import qualified Data.ByteString.Char8     as BytesC8
-import           Data.Text                 (Text)
-import qualified Data.Text                 as Text
-import           Data.Text.Encoding        (decodeUtf8, encodeUtf8)
-import           System.Exit               (die)
+import           Control.Monad.Trans.Class      ( lift )
+import qualified Data.ByteString.Char8         as BytesC8
+import           Data.Text                      ( Text )
+import qualified Data.Text                     as Text
+import           Data.Text.Encoding             ( decodeUtf8
+                                                , encodeUtf8
+                                                )
+import           System.Exit                    ( die )
 import           Text.Megaparsec
 
-import           Bot.Monad                 (MonadBot)
-import qualified Bot.Monad                 as Bot
-import           Irc.Event                 (Event (..))
-import           Irc.EventHandler          (EventHandler (..))
-import           Irc.Parser                (eventP)
-import           Lifted                    (atomicallyL, readTVarIOL)
+import           Bot.Monad                      ( MonadBot )
+import qualified Bot.Monad                     as Bot
+import           Irc.Event                      ( Event(..) )
+import           Irc.EventHandler               ( EventHandler(..) )
+import           Irc.Parser                     ( eventP )
+import           Lifted                         ( atomicallyL
+                                                , readTVarIOL
+                                                )
 
-handler :: (MonadBot m, MonadLogger m) => [EventHandler m] -> ConduitT Text Text m ()
+handler
+    :: (MonadBot m, MonadLogger m)
+    => [EventHandler m]
+    -> ConduitT Text Text m ()
 handler handlers = awaitForever $ \msg -> do
     case parse eventP "" msg of
-        Left err    -> $(logErrorSH) err
+        Left  err   -> $(logErrorSH) err
         Right event -> runHandlers msg event
 
     lift Bot.checkMsgs >>= yieldMany
-    where
-        runHandlers msg event = forM_ handlers (handleEvent event msg)
-        handleEvent event msg (EventHandler e f) =
-            when (e == event) $ lift (f msg)
+  where
+    runHandlers msg event = forM_ handlers (handleEvent event msg)
+    handleEvent event msg (EventHandler e f) = when (e == event) $ lift (f msg)
 
 newlineStripper :: Monad m => ConduitT Text Text m ()
-newlineStripper = awaitForever $ \msg ->
-    yield (Text.dropEnd 2 msg)
+newlineStripper = awaitForever $ \msg -> yield (Text.dropEnd 2 msg)
 
 newlineAdder :: Monad m => ConduitT Text Text m ()
-newlineAdder = awaitForever $ \msg ->
-    yield (msg <> "\r\n")
+newlineAdder = awaitForever $ \msg -> yield (msg <> "\r\n")
 
 serverLogger :: MonadLogger m => ConduitT Text Text m ()
 serverLogger = awaitForever $ \msg -> do
@@ -87,7 +98,7 @@ rateLimiter = do
             numMsgsSent <- readTVarIOL msgsSent
             if numMsgsSent < 20
                 then do
-                    atomicallyL (modifyTVar' msgsSent (+1))
+                    atomicallyL (modifyTVar' msgsSent (+ 1))
                     yield msg
                 else do
                     atomicallyL $ do
@@ -97,15 +108,16 @@ rateLimiter = do
 
     awaitForever checkAndYield
 
-botC :: (MonadIO m, MonadBot m, MonadLogger m)
+botC
+    :: (MonadIO m, MonadBot m, MonadLogger m)
     => [EventHandler m]
-    -> (forall m. MonadBot m => m ())
+    -> (forall m . MonadBot m => m ())
     -> ConduitT Text Text m ()
-botC handlers onConnect = 
+botC handlers onConnect =
     newlineStripper
-    .| serverLogger
-    .| handler handlers
-    .| onConnectC onConnect
-    .| rateLimiter
-    .| clientLogger
-    .| newlineAdder
+        .| serverLogger
+        .| handler handlers
+        .| onConnectC onConnect
+        .| rateLimiter
+        .| clientLogger
+        .| newlineAdder

@@ -2,28 +2,26 @@ module Bot.Monad
     ( MonadBot
     , getConfig
     , getStrings
-
     , getCmds
     , resolveCmd
     , getCmdInfo
-
     , getDynCmd
     , getDynCmdNames
     , addDynCmd
     , delDynCmd
     , saveDynCmds
-
     , checkMsgs
     , sendMsg
-    ) where
+    )
+where
 
-import           Data.HashMap.Strict (HashMap)
-import           Data.Text           (Text)
-import           System.Random       (Random)
+import           Data.HashMap.Strict            ( HashMap )
+import           Data.Text                      ( Text )
+import           System.Random                  ( Random )
 
-import           Bot.Config          (Config)
-import           Command.Info        (CommandInfo)
-import           Command.Type        (Command)
+import           Bot.Config                     ( Config )
+import           Command.Info                   ( CommandInfo )
+import           Command.Type                   ( Command )
 
 class (Monad m) => MonadBot m where
     getConfig :: m Config
