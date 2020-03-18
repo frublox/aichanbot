@@ -25,6 +25,7 @@ import           Text.Megaparsec                ( errorBundlePretty
                                                 , runParserT
                                                 )
 
+import Bot.Source (Source)
 import           Bot.Command                    ( runCommand )
 import           Bot.Monad                      ( MonadBot )
 import qualified Bot.Monad                     as Bot
@@ -60,18 +61,20 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
             let srcPerms = Perms.fromText msg
             handleCmd src srcPerms text
   where
-    handleKeyphrase :: (MonadLogger m, MonadBot m) => Text -> Text -> m ()
+    -- If the message contains a keyphrase, reply to it with a certain response.
+    handleKeyphrase :: (MonadLogger m, MonadBot m) => Source -> Text -> m ()
     handleKeyphrase src text = do
         strs <- Bot.getStrings
-
         let responseKeys = views (key "responses" . _Object) HashMap.keys strs
         forM_ responseKeys $ \k -> when (text `textContains` k) $ do
             let response = view (key "responses" . key k . _String) strs
             Bot.replyTo src response
 
+    -- Tries to parse a command invocation from the message, and runs the command
+    -- if the source has sufficient permissions.
     handleCmd
         :: (MonadLogger m, MonadRandom m, MonadBot m)
-        => Text
+        => Source
         -> Permissions
         -> Text
         -> m ()
@@ -82,5 +85,7 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
             Left  err         -> pure ()
             Right (cmd, args) -> do
                 $(logDebugSH) ("Handling cmd: " <> show cmd)
-                requiredPerms <- view Info.permissions <$> Bot.getCmdInfo cmd
-                when (srcPerms >= requiredPerms) $ runCommand cmd src args
+                info <- Bot.getCmdInfo cmd
+                let requiredPerms = view Info.permissions info
+                when (srcPerms >= requiredPerms) $ 
+                    runCommand cmd src args

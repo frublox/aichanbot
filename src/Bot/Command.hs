@@ -23,6 +23,8 @@ import           Text.Megaparsec                ( runParserT
 import           Random.Monad                   ( MonadRandom
                                                 , randomR
                                                 )
+import           Bot.Source                     ( Source )
+import qualified Bot.Source                    as Source
 import           Bot.Monad                      ( MonadBot )
 import qualified Bot.Monad                     as Bot
 import qualified Bot.Util                      as Bot
@@ -35,9 +37,8 @@ import           Command.Parser                 ( maybePrefixedCommandP )
 import qualified Command.Permissions           as Perms
 import           Command.Type                   ( Command )
 import qualified Command.Type                  as Cmd
-import           Util                           ( stripAt )
 
-runCommand :: (MonadRandom m, MonadBot m) => Command -> Text -> [Text] -> m ()
+runCommand :: (MonadRandom m, MonadBot m) => Command -> Source -> [Text] -> m ()
 runCommand Cmd.Cmds src _ = do
     cmdNames    <- fmap (view name) <$> (Bot.getCmds >>= mapM Bot.getCmdInfo)
     dynCmdNames <- Bot.getDynCmdNames
@@ -48,14 +49,14 @@ runCommand Cmd.Hi src args = do
     msg <- view (key "cmds" . key "hi" . _String) <$> Bot.getStrings
 
     case args of
-        (target : _) -> Bot.replyTo (stripAt target) msg
+        (target : _) -> Bot.replyTo (stripAtSymbol target) msg
         _            -> Bot.replyTo src msg
 
 runCommand Cmd.Bye src args = do
     msg <- view (key "cmds" . key "bye" . _String) <$> Bot.getStrings
 
     case args of
-        (target : _) -> Bot.replyTo (stripAt target) msg
+        (target : _) -> Bot.replyTo (stripAtSymbol target) msg
         _            -> Bot.replyTo src msg
 
 runCommand Cmd.Aliases src args = do
@@ -132,5 +133,10 @@ runCommand Cmd.EightBall src args = case args of
         Bot.replyTo src (rs !! i)
 
 runCommand (Cmd.Dynamic txt) src args = case args of
-    (target : _) -> Bot.replyTo (stripAt target) txt
+    (target : _) -> Bot.replyTo (stripAtSymbol target) txt
     _            -> Bot.replyTo src txt
+
+stripAtSymbol :: Text -> Source
+stripAtSymbol txt | Text.null txt        = Source.fromText txt
+                  | Text.head txt == '@' = Source.fromText (Text.tail txt)
+                  | otherwise            = Source.fromText txt

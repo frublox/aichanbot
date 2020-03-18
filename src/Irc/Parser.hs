@@ -9,6 +9,8 @@ module Irc.Parser
     )
 where
 
+import           Bot.Source                     ( Source )
+import qualified Bot.Source                    as Source
 import           Data.Char                      ( isDigit )
 import           Data.HashMap.Strict            ( HashMap )
 import qualified Data.HashMap.Strict           as HashMap
@@ -45,7 +47,6 @@ eventP = do
         "KICK"    -> EKick
         "PING"    -> EPing
         "PONG"    -> EPong
-
         _         -> if all isDigit event then ENumeric else ERawMsg
 
 twitchTagP :: Parser (Text, [Text])
@@ -71,9 +72,9 @@ msgTextP = do
     msg <- manyTill anySingle eof
     return (Text.pack msg)
 
-msgSourceP :: Parser Text
+msgSourceP :: Parser Source
 msgSourceP = do
     skipMany twitchTagsP
     let src = char ':' *> some (noneOf ['!']) <* char '!'
     someTill anySingle (lookAhead src)
-    Text.pack <$> src
+    Source.fromText . Text.pack <$> src

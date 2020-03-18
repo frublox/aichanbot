@@ -10,6 +10,8 @@ where
 import           Control.Lens
 import           Data.Text                      ( Text )
 
+import           Bot.Source                     ( Source )
+import qualified Bot.Source                    as Source
 import qualified Bot.Config                    as Config
 import           Bot.Monad
 import qualified Command.Info                  as Info
@@ -21,10 +23,10 @@ privMsg msg = do
     let ircMsg = "PRIVMSG " <> chan <> " :" <> msg
     sendMsg ircMsg
 
-replyTo :: MonadBot m => Text -> Text -> m ()
-replyTo user msg = privMsg ("@" <> user <> " " <> msg)
+replyTo :: MonadBot m => Source -> Text -> m ()
+replyTo src msg = privMsg ("@" <> Source.toText src <> " " <> msg)
 
-replyHelpStr :: MonadBot m => Text -> Command -> m ()
-replyHelpStr source cmd = do
+replyHelpStr :: MonadBot m => Source -> Command -> m ()
+replyHelpStr src cmd = do
     info <- getCmdInfo cmd
-    replyTo source (view Info.help info)
+    replyTo src (view Info.help info)

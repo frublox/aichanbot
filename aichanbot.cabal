@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1f5596b8e7e56f45167db1dbd8cb8a21f6c225d5dc9ed72c82344d78bc0636e9
+-- hash: 818fa7b8efc944999d6111c11ab93441100468b30f3febf5215e4c0d7cadf800
 
 name:           aichanbot
 version:        0.1.0.0
@@ -34,6 +34,7 @@ library
       Bot.EventHandlers
       Bot.Init
       Bot.Monad
+      Bot.Source
       Bot.Type
       Bot.Util
       Command.Info
