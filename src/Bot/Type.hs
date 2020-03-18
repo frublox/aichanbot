@@ -55,7 +55,7 @@ instance MonadBot Bot where
     getDynCmd name = Bot $ do
         cmds <- view dynamicCmds >>= readTVarIOL
         pure (cmds HashMap.! name)
-    getDynCmdNames = Bot $ view dynamicCmds >>= readTVarIOL >>= pure . HashMap.keys
+    getDynCmdNames = Bot $ HashMap.keys <$> (view dynamicCmds >>= readTVarIOL)
     addDynCmd name txt = Bot $ do
         var <- view dynamicCmds
         atomicallyL $ modifyTVar' var (HashMap.insert name (Cmd.Dynamic txt))
@@ -64,7 +64,7 @@ instance MonadBot Bot where
         atomicallyL $ modifyTVar' var (HashMap.delete name)
     saveDynCmds = Bot $ do
         cmds <- view dynamicCmds >>= readTVarIOL
-        let cmdsText = fmap show cmds
+        let cmdsText = fmap Cmd.toText cmds
         liftIO $ BytesL.writeFile Paths.dynamicCmds (encode cmdsText)
 
     sendMsg msg = Bot $ do

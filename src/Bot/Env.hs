@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
@@ -15,7 +16,7 @@ module Bot.Env
     ) where
 
 import           Control.Concurrent.STM (TChan, TVar, newTChan, newTChanIO,
-                                         newTVarIO)
+                                         newTVarIO, readTVarIO)
 import           Control.Lens
 import           Control.Monad          (forM, mapM, unless)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
@@ -50,44 +51,47 @@ data Env = Env
     }
 makeLenses ''Env
 
-init :: MonadIO io => io Env
-init = liftIO $ do
+initConfig :: MonadIO io => io Config
+initConfig = liftIO $ do
+    bytes <- BytesL.readFile Paths.config
+    either die pure $ eitherDecode bytes
+
+initDynamicCmds :: MonadIO io => io (HashMap Text Command)
+initDynamicCmds = liftIO $ do
     dynamicCmdsFileExists <- doesFileExist Paths.dynamicCmds
     unless dynamicCmdsFileExists $
         BytesL.writeFile Paths.dynamicCmds "{}"
+    bytes <- BytesL.readFile Paths.dynamicCmds
+    dynCmdsMap <- either die pure $ eitherDecode bytes
+    pure $ fmap Cmd.Dynamic dynCmdsMap
 
-    (config', cmdToInfo', textToCmd', dynamicCmds') <- do
-        let jsonFiles = [Paths.config, Paths.cmds, Paths.dynamicCmds]
-        [configJson, cmdInfosJson, dynCmdsJson] <- mapM BytesL.readFile jsonFiles
-
-        (config', cmdInfos, dynCmdsMap) <- either die pure $ do
-            config' <- eitherDecode configJson
-            cmdInfos <- eitherDecode cmdInfosJson
-            dynCmds <- eitherDecode dynCmdsJson
-            pure (config', cmdInfos, dynCmds)
-
-        cmdInfoPairs <- forM cmdInfos $ \info -> do
+initCmdToInfo :: MonadIO io => HashMap Text Command -> io (HashMap Command CommandInfo)
+initCmdToInfo dynCmdsMap = liftIO $ do
+    bytes <- BytesL.readFile Paths.cmds
+    cmdInfos <- either die pure $ eitherDecode bytes
+    cmdInfoPairs <- forM cmdInfos $ \info -> do
             let result = runParser commandFromNameP "" (info^.name)
             either (die . errorBundlePretty) (\cmd -> pure (cmd, info)) result
+    let dynCmdInfoPairs = fmap
+            (\(txt, Cmd.Dynamic val) -> (Cmd.Dynamic val, dynCmdInfo txt))
+            (HashMap.toList dynCmdsMap)
+    pure $ HashMap.fromList (cmdInfoPairs <> dynCmdInfoPairs)
 
-        let dynCmdInfoPairs = fmap 
-                (\(txt, val) -> (Cmd.Dynamic val, dynCmdInfo txt)) 
-                (HashMap.toList (dynCmdsMap))
+initTextToCmd :: [(Command, CommandInfo)] -> HashMap Text Command
+initTextToCmd = HashMap.fromList . concatMap toNameCmdPairs
+    where
+        cmdNames :: CommandInfo -> [Text]
+        cmdNames info = view name info : view aliases info
 
-        let textToCmd' = HashMap.fromList $
-                concat $ (flip map) cmdInfoPairs $
-                    \(cmd, info) ->
-                        let names = view name info : view aliases info
-                        in  fmap (\n -> (n, cmd)) names
+        toNameCmdPairs :: (Command, CommandInfo) -> [(Text, Command)]
+        toNameCmdPairs (cmd, info) = fmap (,cmd) (cmdNames info)
 
-        let cmdToInfo' = HashMap.fromList (cmdInfoPairs)
-
-        (,,,)
-            <$> pure config'
-            <*> pure cmdToInfo'
-            <*> pure textToCmd'
-            <*> newTVarIO (fmap Cmd.Dynamic dynCmdsMap)
-
+init :: MonadIO io => io Env
+init = liftIO $ do
+    config' <- initConfig
+    dynamicCmds' <- initDynamicCmds >>= newTVarIO
+    cmdToInfo' <- readTVarIO dynamicCmds' >>= initCmdToInfo
+    let textToCmd' = initTextToCmd (HashMap.toList cmdToInfo')
     outputChan' <- newTChanIO
     strings' <- Text.readFile Paths.strings
 

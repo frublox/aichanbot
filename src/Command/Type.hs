@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
 
 module Command.Type
     ( Command(..)
+    , toText
     ) where
 
 import           GHC.Generics                    (Generic)
@@ -44,4 +44,8 @@ instance Show Command where
     show AddCmd        = "add"
     show RemoveCmd     = "remove"
     show EightBall     = "8ball"
-    show (Dynamic txt) = show txt
+    show (Dynamic txt) = Text.unpack txt
+
+toText :: Command -> Text
+toText (Dynamic txt) = txt
+toText cmd = Text.pack (show cmd)

@@ -29,20 +29,20 @@ import           Util                   (stripAt)
 
 runCommand :: MonadBot m => Command -> Text -> [Text] -> m ()
 runCommand Cmd.Cmds src _ = do
-    cmdNames <- Bot.getCmds >>= mapM Bot.getCmdInfo >>= pure . fmap (view name)
+    cmdNames <- fmap (view name) <$> (Bot.getCmds >>= mapM Bot.getCmdInfo)
     dynCmdNames <- Bot.getDynCmdNames
     let f = Text.concat . intersperse ", " . map (Text.cons '!')
     Bot.replyTo src $ f (cmdNames <> dynCmdNames)
 
 runCommand Cmd.Hi src args = do
-    msg <- Bot.getStrings >>= pure . view (key "cmds" . key "hi" . _String)
+    msg <- view (key "cmds" . key "hi" . _String) <$> Bot.getStrings
 
     case args of
         (target:_) -> Bot.replyTo (stripAt target) msg
         _          -> Bot.replyTo src msg
 
 runCommand Cmd.Bye src args = do
-    msg <- Bot.getStrings >>= pure . view (key "cmds" . key "bye" . _String)
+    msg <- view (key "cmds" . key "bye" . _String) <$> Bot.getStrings
 
     case args of
         (target:_) -> Bot.replyTo (stripAt target) msg
@@ -67,7 +67,7 @@ runCommand Cmd.Aliases src args = do
         _ -> Bot.replyHelpStr src Cmd.Aliases
 
 runCommand Cmd.Help src args = do
-    strUnknownCmd <- view (key "cmds" . key "help" . key "unknownCmd" . _String) 
+    strUnknownCmd <- view (key "cmds" . key "help" . key "unknownCmd" . _String)
         <$> Bot.getStrings
 
     case args of
@@ -104,11 +104,11 @@ runCommand Cmd.RemoveCmd src args =
 runCommand Cmd.EightBall src args =
     case args of
         [] -> do
-            msg <- view (key "cmds" . key "8ball" . key "no_args" . _String) 
+            msg <- view (key "cmds" . key "8ball" . key "no_args" . _String)
                 <$> Bot.getStrings
             Bot.replyTo src msg
         _  -> do
-            rs <- views (key "cmds" . key "8ball" . key "responses") (^.. values . _String) 
+            rs <- views (key "cmds" . key "8ball" . key "responses") (^.. values . _String)
                 <$> Bot.getStrings
 
             i <- Bot.randomR (0, length rs - 1)
