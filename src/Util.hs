@@ -2,6 +2,10 @@
 
 module Util where
 
+import           Control.Lens
+
+import           Data.Aeson.Lens
+import Data.Aeson.Types (Value)
 import           Data.Text                      ( Text )
 import qualified Data.Text                     as Text
 

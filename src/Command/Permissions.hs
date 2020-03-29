@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Command.Permissions
     ( Permissions(..)
-    , fromText
+    , fromMsg
     )
 where
 
@@ -22,7 +23,7 @@ data Permissions
     deriving (Show, Eq, Ord)
 
 instance FromJSON Permissions where
-    parseJSON = withText "Permission" $ \val -> case val of
+    parseJSON = withText "Permission" $ \case
         "anyone"    -> return Anyone
         "moderator" -> return Moderator
         perm        -> fail $ "Invalid permission: '" <> unpack perm <> "'"
@@ -31,8 +32,8 @@ instance ToJSON Permissions where
     toJSON Anyone    = String "anyone"
     toJSON Moderator = String "modonly"
 
-fromText :: Text -> Permissions
-fromText msg = case parse twitchTagsP "" msg of
+fromMsg :: Text -> Permissions
+fromMsg msg = case parse twitchTagsP "" msg of
     Right tags ->
         let hasMod   = "mod" `elem` (tags ! "user-type")
             isCaster = any (`textContains` "broadcaster") (tags ! "badges")

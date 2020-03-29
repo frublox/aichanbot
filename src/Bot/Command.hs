@@ -40,30 +40,23 @@ import qualified Command.Type                  as Cmd
 
 runCommand :: (MonadRandom m, MonadBot m) => Command -> Source -> [Text] -> m ()
 runCommand Cmd.Cmds src _ = do
-    cmdNames    <- fmap (view name) <$> (Bot.getCmds >>= mapM Bot.getCmdInfo)
+    cmdInfos <- Bot.getCmds >>= mapM Bot.getCmdInfo
+    let cmdNames = fmap (view name) cmdInfos
     dynCmdNames <- Bot.getDynCmdNames
-    let f = Text.concat . intersperse ", " . map (Text.cons '!')
-    Bot.replyTo src $ f (cmdNames <> dynCmdNames)
+    let toCmdList = Text.concat . intersperse ", " . map (Text.cons '!')
+    Bot.replyTo src $ toCmdList (cmdNames <> dynCmdNames)
 
 runCommand Cmd.Hi src args = do
-    msg <- view (key "cmds" . key "hi" . _String) <$> Bot.getStrings
-
-    case args of
-        (target : _) -> Bot.replyTo (stripAtSymbol target) msg
-        _            -> Bot.replyTo src msg
+    reply <- Bot.lookUpStr ["cmds", "hi"]
+    replyCmd src args reply
 
 runCommand Cmd.Bye src args = do
-    msg <- view (key "cmds" . key "bye" . _String) <$> Bot.getStrings
-
-    case args of
-        (target : _) -> Bot.replyTo (stripAtSymbol target) msg
-        _            -> Bot.replyTo src msg
+    reply <- Bot.lookUpStr ["cmds", "bye"]
+    replyCmd src args reply
 
 runCommand Cmd.Aliases src args = do
-    strs <- Bot.getStrings
-    let strUnknownCmd =
-            view (key "cmds" . key "aliases" . key "unknownCmd" . _String) strs
-    let strNone = view (key "cmds" . key "aliases" . key "none" . _String) strs
+    strUnknownCmd <- Bot.lookUpStr ["cmds", "aliases", "unknownCmd"]
+    strNone       <- Bot.lookUpStr ["cmds", "aliases", "none"]
 
     case args of
         (cmdName : _) -> do
@@ -74,17 +67,19 @@ runCommand Cmd.Aliases src args = do
                 Left  _   -> Bot.replyTo src strUnknownCmd
                 Right cmd -> do
                     info <- Bot.getCmdInfo cmd
-                    let toText =
-                            Text.concat . intersperse ", " . map (Text.cons '!')
-                    if null (info ^. aliases)
+                    let response =
+                            Text.concat
+                                .  intersperse ", "
+                                .  map (Text.cons '!')
+                                $  info
+                                ^. aliases
+                    if Text.null response
                         then Bot.replyTo src strNone
-                        else Bot.replyTo src (toText (info ^. aliases))
+                        else Bot.replyTo src response
         _ -> Bot.replyHelpStr src Cmd.Aliases
 
 runCommand Cmd.Help src args = do
-    strUnknownCmd <-
-        view (key "cmds" . key "help" . key "unknownCmd" . _String)
-            <$> Bot.getStrings
+    strUnknownCmd <- Bot.lookUpStr ["cmds", "help", "unknownCmd"]
 
     case args of
         (cmdName : _) -> do
@@ -102,7 +97,7 @@ runCommand Cmd.AddCmd src args = case args of
     (cmdName : cmdText : _) -> do
         Bot.addDynCmd cmdName cmdText
 
-        msg <- view (key "cmds" . key "add" . _String) <$> Bot.getStrings
+        msg <- Bot.lookUpStr ["cmds", "add"]
         Bot.replyTo src (msg <> cmdName)
 
         Bot.saveDynCmds
@@ -111,7 +106,8 @@ runCommand Cmd.AddCmd src args = case args of
 runCommand Cmd.RemoveCmd src args = case args of
     (cmdName : _) -> do
         Bot.delDynCmd cmdName
-        msg <- view (key "cmds" . key "remove" . _String) <$> Bot.getStrings
+
+        msg <- Bot.lookUpStr ["cmds", "remove"]
         Bot.replyTo src (msg <> cmdName)
 
         Bot.saveDynCmds
@@ -119,24 +115,19 @@ runCommand Cmd.RemoveCmd src args = case args of
 
 runCommand Cmd.EightBall src args = case args of
     [] -> do
-        msg <-
-            view (key "cmds" . key "8ball" . key "no_args" . _String)
-                <$> Bot.getStrings
+        msg <- Bot.lookUpStr ["cmds", "8ball", "no_args"]
         Bot.replyTo src msg
     _ -> do
-        rs <-
-            views (key "cmds" . key "8ball" . key "responses")
-                  (^.. values . _String)
-                <$> Bot.getStrings
-
+        rs <- Bot.lookUpStrs ["cmds", "8ball", "responses"]
         i <- randomR (0, length rs - 1)
         Bot.replyTo src (rs !! i)
 
 runCommand (Cmd.Dynamic txt) src args = case args of
-    (target : _) -> Bot.replyTo (stripAtSymbol target) txt
+    (target : _) -> Bot.replyTo (Source.fromText target) txt
     _            -> Bot.replyTo src txt
 
-stripAtSymbol :: Text -> Source
-stripAtSymbol txt | Text.null txt        = Source.fromText txt
-                  | Text.head txt == '@' = Source.fromText (Text.tail txt)
-                  | otherwise            = Source.fromText txt
+-- Reply to the source with a particular string.
+replyCmd :: (MonadRandom m, MonadBot m) => Source -> [Text] -> Text -> m ()
+replyCmd src args reply = case args of
+    (target : _) -> Bot.replyTo (Source.fromText target) reply
+    _            -> Bot.replyTo src reply

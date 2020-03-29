@@ -3,11 +3,11 @@
         "hi": "hi! KonCha",
         "bye": "cya! TehePelo",
         "aliases": {
-            "unknownCmd": "oWo whats this command...? (command not found)",
+            "unknownCmd": "What's that command...? (command not found)",
             "none": ">w< no aliases for that command..."
         },
         "help": {
-            "unknownCmd": "oWo whats this command...? (command not found)"
+            "unknownCmd": "What's this command...? (command not found)"
         },
         "add": "Added command !",
         "remove": "Removed command !",

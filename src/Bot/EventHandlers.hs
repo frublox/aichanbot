@@ -25,7 +25,7 @@ import           Text.Megaparsec                ( errorBundlePretty
                                                 , runParserT
                                                 )
 
-import Bot.Source (Source)
+import           Bot.Source                     ( Source )
 import           Bot.Command                    ( runCommand )
 import           Bot.Monad                      ( MonadBot )
 import qualified Bot.Monad                     as Bot
@@ -58,8 +58,8 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
         Left  err         -> $(logErrorSH) (errorBundlePretty err)
         Right (src, text) -> do
             handleKeyphrase src text
-            let srcPerms = Perms.fromText msg
-            handleCmd src srcPerms text
+            let perms = Perms.fromMsg msg
+            handleCmd src perms text
   where
     -- If the message contains a keyphrase, reply to it with a certain response.
     handleKeyphrase :: (MonadLogger m, MonadBot m) => Source -> Text -> m ()
@@ -67,7 +67,7 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
         strs <- Bot.getStrings
         let responseKeys = views (key "responses" . _Object) HashMap.keys strs
         forM_ responseKeys $ \k -> when (text `textContains` k) $ do
-            let response = view (key "responses" . key k . _String) strs
+            response <- Bot.lookUpStr ["responses", k]
             Bot.replyTo src response
 
     -- Tries to parse a command invocation from the message, and runs the command
@@ -78,7 +78,7 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
         -> Permissions
         -> Text
         -> m ()
-    handleCmd src srcPerms text = do
+    handleCmd src perms text = do
         parsedCmd <- runParserT (commandP Bot.resolveCmd) "" text
         let parsedArgs = runParser argsP "" text
         case liftA2 (,) parsedCmd parsedArgs of
@@ -87,5 +87,4 @@ msgHandler = EventHandler EPrivMsg $ \msg -> do
                 $(logDebugSH) ("Handling cmd: " <> show cmd)
                 info <- Bot.getCmdInfo cmd
                 let requiredPerms = view Info.permissions info
-                when (srcPerms >= requiredPerms) $ 
-                    runCommand cmd src args
+                when (perms >= requiredPerms) $ runCommand cmd src args
