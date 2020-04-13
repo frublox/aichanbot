@@ -46,5 +46,11 @@
         "aliases": [],
         "permissions": "anyone",
         "help": "Usage: !8ball <yes-or-no question>"
+    },
+    {
+        "name": "reload",
+        "aliases": [],
+        "permissions": "caster",
+        "help": "Usage: !reload"
     }
 ]

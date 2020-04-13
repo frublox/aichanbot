@@ -1,119 +1,101 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Bot.Env
     ( Env
     , config
-    , outputChan
     , cmdToInfo
     , textToCmd
     , dynamicCmds
     , strings
+
+    , dynamicCmdsPath
+    , stringsPath
+
     , init
     )
 where
 
-import           Control.Concurrent.STM         ( TChan
-                                                , TVar
-                                                , newTChan
-                                                , newTChanIO
-                                                , newTVarIO
-                                                , readTVarIO
-                                                )
-import           Control.Lens
-import           Control.Monad                  ( forM
-                                                , mapM
-                                                , unless
-                                                )
-import           Control.Monad.IO.Class         ( MonadIO
-                                                , liftIO
-                                                )
-import           Data.Aeson                     ( eitherDecode )
-import qualified Data.ByteString.Lazy          as BytesL
-import           Data.HashMap.Strict            ( HashMap )
-import qualified Data.HashMap.Strict           as HashMap
-import           Data.Text                      ( Text )
-import qualified Data.Text                     as Text
-import qualified Data.Text.IO                  as Text
-import           Prelude                 hiding ( init )
-import           System.Directory               ( doesFileExist )
-import           System.Exit                    ( die )
-import           Text.Megaparsec                ( errorBundlePretty
-                                                , runParser
-                                                )
+import qualified Control.Concurrent.STM as STM
+import qualified Control.Lens           as Lens
+import           Control.Monad          (forM, mapM, unless)
+import qualified Data.Aeson             as Aeson
+import qualified Data.ByteString.Lazy   as Bytes
+import           Data.HashMap.Strict    (HashMap)
+import qualified Data.HashMap.Strict    as HashMap
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
+import qualified Data.Text.IO           as Text.IO
+import           Prelude                hiding (init)
+import qualified System.Directory
+import qualified System.Exit
+import qualified Text.Megaparsec        as Megaparsec
 
-import           Bot.Config                     ( Config )
-import           Command.Info                   ( CommandInfo(..)
-                                                , aliases
-                                                , dynCmdInfo
-                                                , name
-                                                )
-import           Command.Parser                 ( commandFromNameP )
-import qualified Command.Permissions           as Perms
-import           Command.Type                   ( Command )
-import qualified Command.Type                  as Cmd
-import qualified Paths
+import           Bot.Config             (Config)
+import           Command.Info           (CommandInfo (..), aliases, dynCmdInfo,
+                                         name)
+import           Command.Parser         (commandFromNameP)
+import           Command.Type           (Command)
+import qualified Command.Type           as Cmd
 
 data Env = Env
     { _config      :: Config
-    , _outputChan  :: TChan Text
     , _cmdToInfo   :: HashMap Command CommandInfo
     , _textToCmd   :: HashMap Text Command
-    , _dynamicCmds :: TVar (HashMap Text Command)
-    , _strings     :: Text
+    , _dynamicCmds :: STM.TVar (HashMap Text Command)
+    , _strings     :: STM.TVar Text
     }
-makeLenses ''Env
+Lens.makeLenses ''Env
 
-initConfig :: MonadIO io => io Config
-initConfig = liftIO $ do
-    bytes <- BytesL.readFile Paths.config
-    either die pure $ eitherDecode bytes
+configPath :: FilePath
+configPath = "config.json"
 
-initDynamicCmds :: MonadIO io => io (HashMap Text Command)
-initDynamicCmds = liftIO $ do
-    dynamicCmdsFileExists <- doesFileExist Paths.dynamicCmds
-    unless dynamicCmdsFileExists $ BytesL.writeFile Paths.dynamicCmds "{}"
-    bytes      <- BytesL.readFile Paths.dynamicCmds
-    dynCmdsMap <- either die pure $ eitherDecode bytes
-    pure $ fmap Cmd.Dynamic dynCmdsMap
+cmdsPath :: FilePath
+cmdsPath = "data/cmds.json"
 
-initCmdToInfo
-    :: MonadIO io => HashMap Text Command -> io (HashMap Command CommandInfo)
-initCmdToInfo dynCmdsMap = liftIO $ do
-    bytes        <- BytesL.readFile Paths.cmds
-    cmdInfos     <- either die pure $ eitherDecode bytes
-    cmdInfoPairs <- forM cmdInfos $ \info -> do
-        let result = runParser commandFromNameP "" (info ^. name)
-        either (die . errorBundlePretty) (\cmd -> pure (cmd, info)) result
-    let dynCmdInfoPairs = fmap
-            (\(txt, Cmd.Dynamic val) -> (Cmd.Dynamic val, dynCmdInfo txt))
-            (HashMap.toList dynCmdsMap)
-    pure $ HashMap.fromList (cmdInfoPairs <> dynCmdInfoPairs)
+dynamicCmdsPath :: FilePath
+dynamicCmdsPath = "data/dynamic_cmds.json"
 
-initTextToCmd :: [(Command, CommandInfo)] -> HashMap Text Command
-initTextToCmd = HashMap.fromList . concatMap toNameCmdPairs
-  where
-    cmdNames :: CommandInfo -> [Text]
-    cmdNames info = view name info : view aliases info
+stringsPath :: FilePath
+stringsPath = "data/strings.json"
 
-    toNameCmdPairs :: (Command, CommandInfo) -> [(Text, Command)]
-    toNameCmdPairs (cmd, info) = fmap (, cmd) (cmdNames info)
+init :: IO Env
+init = do
+    config' <- Bytes.readFile configPath >>= decodeOrDie
 
-init :: MonadIO io => io Env
-init = liftIO $ do
-    config'      <- initConfig
-    dynamicCmds' <- initDynamicCmds >>= newTVarIO
-    cmdToInfo'   <- readTVarIO dynamicCmds' >>= initCmdToInfo
-    let textToCmd' = initTextToCmd (HashMap.toList cmdToInfo')
-    outputChan' <- newTChanIO
-    strings'    <- Text.readFile Paths.strings
+    dynamicCmds' <- STM.newTVarIO =<< do
+        fileExists <- System.Directory.doesFileExist cmdsPath
+        unless fileExists $
+            Bytes.writeFile dynamicCmdsPath "{}"
+        dynCmdsMap <- Bytes.readFile dynamicCmdsPath >>= decodeOrDie
+        pure $ fmap Cmd.Dynamic dynCmdsMap
+
+    cmdToInfo' <- do
+        infos <- Bytes.readFile cmdsPath >>= decodeOrDie
+        infoPairs <- forM infos $ \info -> do
+            let result = Megaparsec.runParser commandFromNameP "" (Lens.view name info)
+            case result of
+                Left err -> System.Exit.die (Megaparsec.errorBundlePretty err)
+                Right cmd -> pure (cmd, info)
+        pure $ HashMap.fromList infoPairs
+
+    let cmdNames info = Lens.view name info : Lens.view aliases info
+    let toNameCmdPairs (cmd, info) = fmap (, cmd) (cmdNames info)
+    let textToCmd' = HashMap.fromList . concatMap toNameCmdPairs . HashMap.toList $ cmdToInfo'
+    
+    strings' <- Text.IO.readFile stringsPath >>= STM.newTVarIO
 
     pure $ Env { _config      = config'
-               , _outputChan  = outputChan'
                , _cmdToInfo   = cmdToInfo'
                , _textToCmd   = textToCmd'
                , _dynamicCmds = dynamicCmds'
                , _strings     = strings'
                }
+
+    where
+        decodeOrDie :: Aeson.FromJSON a => Bytes.ByteString -> IO a
+        decodeOrDie bytes = case Aeson.eitherDecode' bytes of
+            Left err  -> System.Exit.die err
+            Right val -> pure val

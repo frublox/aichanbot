@@ -7,84 +7,59 @@ module Bot.EventHandlers
     )
 where
 
-import           Control.Applicative            ( liftA2 )
+import           Control.Applicative  (liftA2)
 import           Control.Lens
-import           Control.Monad                  ( forM_
-                                                , when
-                                                )
-import           Control.Monad.Logger
-import           Data.Aeson.Lens                ( key
-                                                , _Object
-                                                , _String
-                                                )
-import qualified Data.HashMap.Strict           as HashMap
-import           Data.Text                      ( Text )
-import qualified Data.Text                     as Text
-import           Text.Megaparsec                ( errorBundlePretty
-                                                , runParser
-                                                , runParserT
-                                                )
+import           Control.Monad        (forM, forM_, when)
+import           Control.Monad.Logger (MonadLogger, logDebugSH, logErrorSH)
+import qualified Data.Aeson.Lens      as Aeson.Lens
+import           Data.HashMap.Strict  ((!))
+import qualified Data.HashMap.Strict  as HashMap
+import           Data.Text            (Text)
+import qualified Data.Text            as Text
+import qualified Text.Megaparsec      as Megaparsec
 
-import           Bot.Source                     ( Source )
-import           Bot.Command                    ( runCommand )
-import           Bot.Monad                      ( MonadBot )
-import qualified Bot.Monad                     as Bot
-import qualified Bot.Util                      as Bot
-import qualified Command.Info                  as Info
-import           Command.Parser                 ( argsP
-                                                , commandP
-                                                )
-import           Command.Permissions           as Perms
-import           Random.Monad                   ( MonadRandom
-                                                , randomR
-                                                )
-import           Irc.Event                      ( Event(..) )
-import           Irc.EventHandler               ( EventHandler(..) )
-import           Irc.Parser                     ( msgSourceP
-                                                , msgTextP
-                                                )
-import           Util                           ( textContains )
+import           Bot.Command          (runCommand)
+import           Bot.Monad            (MonadBot)
+import qualified Bot.Monad            as Bot
+import           Bot.Source           (Source)
+import qualified Bot.Util             as Bot
+import qualified Command.Info         as Info
+import           Command.Parser       (argsP, commandP)
+import           Command.Permissions  as Perms
+import           Irc.Event            (Event (..))
+import           Irc.EventHandler     (EventHandler (..))
+import           Irc.Parser           (msgSourceP, msgTextP, twitchTagsP)
+import           Random.Monad         (MonadRandom, randomR)
+import           Util                 (textContains)
 
-pingHandler :: MonadBot m => EventHandler m
+pingHandler :: Monad m => EventHandler m
 pingHandler =
-    EventHandler EPing $ \msg -> Bot.sendMsg ("PONG :" <> Text.drop 6 msg)
+    EventHandler EPing $ \msg -> pure ["PONG :" <> Text.drop 6 msg]
 
 msgHandler :: (MonadLogger m, MonadRandom m, MonadBot m) => EventHandler m
 msgHandler = EventHandler EPrivMsg $ \msg -> do
-    let parsedSource = runParser msgSourceP "" msg
-    let parsedText   = runParser msgTextP "" msg
-
-    case liftA2 (,) parsedSource parsedText of
-        Left  err         -> $(logErrorSH) (errorBundlePretty err)
-        Right (src, text) -> do
-            handleKeyphrase src text
-            let perms = Perms.fromMsg msg
-            handleCmd src perms text
-  where
-    -- If the message contains a keyphrase, reply to it with a certain response.
-    handleKeyphrase :: (MonadLogger m, MonadBot m) => Source -> Text -> m ()
-    handleKeyphrase src text = do
-        strs <- Bot.getStrings
-        let responseKeys = views (key "responses" . _Object) HashMap.keys strs
-        forM_ responseKeys $ \k -> when (text `textContains` k) $ do
-            response <- Bot.lookUpStr ["responses", k]
-            Bot.replyTo src response
-
-    -- Tries to parse a command invocation from the message, and runs the command
-    -- if the source has sufficient permissions.
-    handleCmd
-        :: (MonadLogger m, MonadRandom m, MonadBot m)
-        => Source
-        -> Permissions
-        -> Text
-        -> m ()
-    handleCmd src perms text = do
-        parsedCmd <- runParserT (commandP Bot.resolveCmd) "" text
-        let parsedArgs = runParser argsP "" text
-        case liftA2 (,) parsedCmd parsedArgs of
-            Left  err         -> pure ()
-            Right (cmd, args) -> do
-                $(logDebugSH) ("Handling cmd: " <> show cmd)
-                info <- Bot.getCmdInfo cmd
-                let requiredPerms = view Info.permissions info
-                when (perms >= requiredPerms) $ runCommand cmd src args
+    let parsedSource = Megaparsec.runParser msgSourceP "" msg
+    let parsedMsg = Megaparsec.runParser msgTextP "" msg
+    case liftA2 (,) parsedSource parsedMsg of
+        Left err -> $(logErrorSH) (Megaparsec.errorBundlePretty err) >> pure []
+        Right (src, msgText) -> do
+            -- Handle keyphrases
+            keyphraseMsgs <- do
+                responseKeys <- fmap HashMap.keys (Bot.lookUpObj ["responses"])
+                fmap concat $ forM responseKeys $ \key ->
+                    if msgText `textContains` key
+                        then Bot.lookUpStr ["responses", key] >>= Bot.replyTo src
+                        else pure []
+            -- Handle commands
+            cmdMsgs <- do
+                parsedCmd <- Megaparsec.runParserT (commandP Bot.resolveCmd) "" msgText
+                let parsedArgs = Megaparsec.runParser argsP "" msgText
+                case liftA2 (,) parsedCmd parsedArgs of
+                    Left err -> pure []
+                    Right (cmd, args) -> do
+                        info <- Bot.getCmdInfo cmd
+                        let requiredPerms = view Info.permissions info
+                        if Perms.fromMsg msg >= requiredPerms
+                            then runCommand cmd src args
+                            else pure []
+            pure (keyphraseMsgs <> cmdMsgs)

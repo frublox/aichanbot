@@ -3,11 +3,12 @@ module Irc.EventHandler
     )
 where
 
-import           Data.Text                      ( Text )
+import           Data.Text (Text)
 
-import           Irc.Event                      ( Event )
+import           Irc.Event (Event)
 
 data EventHandler m = EventHandler
     { getEvent    :: Event
-    , handlerFunc :: Text -> m ()
+    -- A handler takes a message and returns 0 or more messages to send back
+    , handlerFunc :: Text -> m [Text]
     }

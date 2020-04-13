@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+
+<head>
+    <title>C:\Users\lain\Haskell\aichanbot\src\Bot\Source.hs</title>
+</head>
+
+<head>
+    <link type='text/css' rel='stylesheet' href='liquid.css' />
+</head>
+
+<body>
+    <hr>
+    Put mouse over identifiers to see inferred types
+    <pre><span class=hs-linenum> 1: </span><a class=annot href="#"><span class=annottext>GHC.Types.Module</span><span class='hs-keyword'>module</span></a> <span class='hs-conid'>Bot.Source</span>
+<span class=hs-linenum> 2: </span>    <span class='hs-layout'>(</span> <span class='hs-conid'>Source</span>
+<span class=hs-linenum> 3: </span>    <span class='hs-layout'>,</span> <span class='hs-varid'>fromText</span>
+<span class=hs-linenum> 4: </span>    <span class='hs-layout'>,</span> <span class='hs-varid'>toText</span>
+<span class=hs-linenum> 5: </span>    <span class='hs-layout'>)</span>
+<span class=hs-linenum> 6: </span><span class='hs-keyword'>where</span>
+<span class=hs-linenum> 7: </span>
+<span class=hs-linenum> 8: </span><span class='hs-keyword'>import</span>           <span class='hs-conid'>Data.Text</span> <span class='hs-layout'>(</span><span class='hs-conid'>Text</span><span class='hs-layout'>)</span>
+<span class=hs-linenum> 9: </span><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data.Text</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>Text</span>
+<span class=hs-linenum>10: </span>
+<span class=hs-linenum>11: </span><span class='hs-keyword'>newtype</span> <span class='hs-conid'>Source</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Source</span> <span class='hs-conid'>Text</span>
+<span class=hs-linenum>12: </span>
+<span class=hs-linenum>13: </span><span class='hs-definition'>fromText</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Text</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Source</span>
+<span class=hs-linenum>14: </span><a class=annot href="#"><span class=annottext>Data.Text.Internal.Text -&gt; Bot.Source.Source</span><span class='hs-definition'>fromText</span></a> <a class=annot href="#"><span class=annottext>Data.Text.Internal.Text</span><span class='hs-varid'>txt</span></a> <span class='hs-keyglyph'>|</span> <a class=annot href="#"><span class=annottext>{v : GHC.Types.Bool | v &lt;=&gt; tlen txt == 0}</span><span class='hs-conid'>Text.null</span></a> <a class=annot href="#"><span class=annottext>{v : Data.Text.Internal.Text | 0 &lt;= tlen v
+                               &amp;&amp; tlen v == stringlen v
+                               &amp;&amp; v == txt}</span><span class='hs-varid'>txt</span></a>        <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Source</span> <span class='hs-varid'>txt</span>
+<span class=hs-linenum>15: </span>             <span class='hs-keyglyph'>|</span> <a class=annot href="#"><span class=annottext>GHC.Types.Char</span><span class='hs-conid'>Text.head</span></a> <a class=annot href="#"><span class=annottext>{v : Data.Text.Internal.Text | 0 &lt;= tlen v
+                               &amp;&amp; tlen v == stringlen v
+                               &amp;&amp; v == txt}</span><span class='hs-varid'>txt</span></a> <span class='hs-varop'>==</span> <a class=annot href="#"><span class=annottext>{v : GHC.Types.Char | v == (lit "64" Char)}</span><span class='hs-chr'>'@'</span></a> <span class='hs-keyglyph'>=</span> <a class=annot href="#"><span class=annottext>Data.Text.Internal.Text</span><span class='hs-conid'>Source</span></a> <span class='hs-layout'>(</span><span class='hs-conid'>Text.tail</span> <a class=annot href="#"><span class=annottext>{v : Data.Text.Internal.Text | 0 &lt;= tlen v
+                               &amp;&amp; tlen v == stringlen v
+                               &amp;&amp; v == txt}</span><span class='hs-varid'>txt</span></a><span class='hs-layout'>)</span>
+<span class=hs-linenum>16: </span>             <span class='hs-keyglyph'>|</span> <span class='hs-varid'>otherwise</span>            <span class='hs-keyglyph'>=</span> <span class='hs-conid'>Source</span> <span class='hs-varid'>txt</span>
+<span class=hs-linenum>17: </span>
+<span class=hs-linenum>18: </span><span class='hs-definition'>toText</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Source</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Text</span>
+<span class=hs-linenum>19: </span><a class=annot href="#"><span class=annottext>Bot.Source.Source -&gt; Data.Text.Internal.Text</span><span class='hs-definition'>toText</span></a> <span class='hs-layout'>(</span><span class='hs-conid'>Source</span> <span class='hs-varid'>txt</span><span class='hs-layout'>)</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>txt</span>
+</pre>
+</body>
+
+</html>

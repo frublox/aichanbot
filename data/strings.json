@@ -1,6 +1,6 @@
 {
     "cmds": {
-        "hi": "hi! KonCha",
+        "hi": "hi! VoHiYo",
         "bye": "cya! TehePelo",
         "aliases": {
             "unknownCmd": "What's that command...? (command not found)",
@@ -28,9 +28,13 @@
                 "Maybe someday.",
                 "Are you serious?"
             ]
+        },
+        "reload": {
+            "success": "Successfully reloaded bot data."
         }
     },
     "responses": {
-        "KonCha": "L-lewd!"
+        "KonCha": "KonCha",
+        "VoHiYo": "VoHiYo"
     }
 }

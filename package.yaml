@@ -48,7 +48,7 @@ library:
   source-dirs: src
 
 executables:
-  aichanbot-exe:
+  aichanbot:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

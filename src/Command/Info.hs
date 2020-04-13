@@ -13,17 +13,17 @@ where
 
 import           Control.Lens
 import           Data.Aeson.TH
-import           Data.Text                      ( Text )
+import           Data.Text           (Text)
 
-import           Command.Permissions            ( Permissions )
-import qualified Command.Permissions           as Perms
+import           Command.Permissions (Permissions)
+import qualified Command.Permissions as Perms
 
 data CommandInfo = CommandInfo
     { _name        :: Text
     , _aliases     :: [Text]
     , _permissions :: Permissions
     , _help        :: Text
-    }
+    } deriving (Show)
 
 makeLenses ''CommandInfo
 $(deriveJSON defaultOptions{fieldLabelModifier = drop 1} ''CommandInfo)

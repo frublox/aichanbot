@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 818fa7b8efc944999d6111c11ab93441100468b30f3febf5215e4c0d7cadf800
+-- hash: 1115a8df25c7d1aa5c673471df0329d007cdf1e7b2710ebfabbdcf2b843890c7
 
 name:           aichanbot
 version:        0.1.0.0
@@ -46,7 +46,6 @@ library
       Irc.EventHandler
       Irc.Parser
       Lifted
-      Paths
       Random.Monad
       Util
   other-modules:
@@ -79,7 +78,7 @@ library
     , vector
   default-language: Haskell2010
 
-executable aichanbot-exe
+executable aichanbot
   main-is: Main.hs
   other-modules:
       Paths_aichanbot

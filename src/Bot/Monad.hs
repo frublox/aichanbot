@@ -5,23 +5,22 @@ module Bot.Monad
     , getCmds
     , resolveCmd
     , getCmdInfo
+    , reload
     , getDynCmd
     , getDynCmdNames
     , addDynCmd
     , delDynCmd
     , saveDynCmds
-    , checkMsgs
-    , sendMsg
     )
 where
 
-import           Data.HashMap.Strict            ( HashMap )
-import           Data.Text                      ( Text )
-import           System.Random                  ( Random )
+import           Data.HashMap.Strict (HashMap)
+import           Data.Text           (Text)
+import           System.Random       (Random)
 
-import           Bot.Config                     ( Config )
-import           Command.Info                   ( CommandInfo )
-import           Command.Type                   ( Command )
+import           Bot.Config          (Config)
+import           Command.Info        (CommandInfo)
+import           Command.Type        (Command)
 
 class (Monad m) => MonadBot m where
     getConfig :: m Config
@@ -31,12 +30,11 @@ class (Monad m) => MonadBot m where
     resolveCmd :: Text -> m (Maybe Command)
     getCmdInfo :: Command -> m CommandInfo
 
+    reload :: m ()
+
     -- Should probably be split into a different typeclass
     getDynCmd :: Text -> m Command
     getDynCmdNames :: m [Text]
     addDynCmd :: Text -> Text -> m ()
     delDynCmd :: Text -> m ()
     saveDynCmds :: m ()
-
-    checkMsgs :: m [Text]
-    sendMsg :: Text -> m ()

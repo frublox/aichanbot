@@ -1,0 +1,214 @@
+{
+    "status": "safe",
+    "types": {
+        "15": {
+            "57": {
+                "ann": "{v : Data.Text.Internal.Text | 0 <= tlen v\n                               && tlen v == stringlen v\n                               && v == txt}",
+                "ident": "txt",
+                "row": 15,
+                "col": 57
+            },
+            "26": {
+                "ann": "{v : Data.Text.Internal.Text | 0 <= tlen v\n                               && tlen v == stringlen v\n                               && v == txt}",
+                "ident": "txt",
+                "row": 15,
+                "col": 26
+            },
+            "16": {
+                "ann": "GHC.Types.Char",
+                "ident": "lq_anf$##7205759403792802913",
+                "row": 15,
+                "col": 16
+            },
+            "39": {
+                "ann": "Data.Text.Internal.Text",
+                "ident": "lq_anf$##7205759403792802917",
+                "row": 15,
+                "col": 39
+            },
+            "33": {
+                "ann": "{v : GHC.Types.Char | v == (lit \"64\" Char)}",
+                "ident": "lq_anf$##7205759403792802914",
+                "row": 15,
+                "col": 33
+            }
+        },
+        "14": {
+            "1": {
+                "ann": "Data.Text.Internal.Text -> Bot.Source.Source",
+                "ident": "Bot.Source.fromText",
+                "row": 14,
+                "col": 1
+            },
+            "26": {
+                "ann": "{v : Data.Text.Internal.Text | 0 <= tlen v\n                               && tlen v == stringlen v\n                               && v == txt}",
+                "ident": "txt",
+                "row": 14,
+                "col": 26
+            },
+            "16": {
+                "ann": "{v : GHC.Types.Bool | v <=> tlen txt == 0}",
+                "ident": "lq_anf$##7205759403792802911",
+                "row": 14,
+                "col": 16
+            },
+            "10": {
+                "ann": "Data.Text.Internal.Text",
+                "ident": "txt",
+                "row": 14,
+                "col": 10
+            }
+        },
+        "19": {
+            "1": {
+                "ann": "Bot.Source.Source -> Data.Text.Internal.Text",
+                "ident": "Bot.Source.toText",
+                "row": 19,
+                "col": 1
+            }
+        },
+        "1": {
+            "1": {
+                "ann": "GHC.Types.Module",
+                "ident": "Bot.Source.$trModule",
+                "row": 1,
+                "col": 1
+            }
+        }
+    },
+    "sptypes": [
+        {
+            "start": {
+                "line": 1,
+                "column": 1
+            },
+            "ann": "GHC.Types.Module",
+            "ident": "Bot.Source.$trModule",
+            "stop": {
+                "line": 1,
+                "column": 1
+            }
+        },
+        {
+            "start": {
+                "line": 14,
+                "column": 1
+            },
+            "ann": "Data.Text.Internal.Text -> Bot.Source.Source",
+            "ident": "Bot.Source.fromText",
+            "stop": {
+                "line": 14,
+                "column": 9
+            }
+        },
+        {
+            "start": {
+                "line": 14,
+                "column": 10
+            },
+            "ann": "Data.Text.Internal.Text",
+            "ident": "txt",
+            "stop": {
+                "line": 14,
+                "column": 13
+            }
+        },
+        {
+            "start": {
+                "line": 14,
+                "column": 16
+            },
+            "ann": "{v : GHC.Types.Bool | v <=> tlen txt == 0}",
+            "ident": "lq_anf$##7205759403792802911",
+            "stop": {
+                "line": 14,
+                "column": 29
+            }
+        },
+        {
+            "start": {
+                "line": 14,
+                "column": 26
+            },
+            "ann": "{v : Data.Text.Internal.Text | 0 <= tlen v\n                               && tlen v == stringlen v\n                               && v == txt}",
+            "ident": "txt",
+            "stop": {
+                "line": 14,
+                "column": 29
+            }
+        },
+        {
+            "start": {
+                "line": 15,
+                "column": 16
+            },
+            "ann": "GHC.Types.Char",
+            "ident": "lq_anf$##7205759403792802913",
+            "stop": {
+                "line": 15,
+                "column": 29
+            }
+        },
+        {
+            "start": {
+                "line": 15,
+                "column": 26
+            },
+            "ann": "{v : Data.Text.Internal.Text | 0 <= tlen v\n                               && tlen v == stringlen v\n                               && v == txt}",
+            "ident": "txt",
+            "stop": {
+                "line": 15,
+                "column": 29
+            }
+        },
+        {
+            "start": {
+                "line": 15,
+                "column": 33
+            },
+            "ann": "{v : GHC.Types.Char | v == (lit \"64\" Char)}",
+            "ident": "lq_anf$##7205759403792802914",
+            "stop": {
+                "line": 15,
+                "column": 36
+            }
+        },
+        {
+            "start": {
+                "line": 15,
+                "column": 39
+            },
+            "ann": "Data.Text.Internal.Text",
+            "ident": "lq_anf$##7205759403792802917",
+            "stop": {
+                "line": 15,
+                "column": 61
+            }
+        },
+        {
+            "start": {
+                "line": 15,
+                "column": 57
+            },
+            "ann": "{v : Data.Text.Internal.Text | 0 <= tlen v\n                               && tlen v == stringlen v\n                               && v == txt}",
+            "ident": "txt",
+            "stop": {
+                "line": 15,
+                "column": 60
+            }
+        },
+        {
+            "start": {
+                "line": 19,
+                "column": 1
+            },
+            "ann": "Bot.Source.Source -> Data.Text.Internal.Text",
+            "ident": "Bot.Source.toText",
+            "stop": {
+                "line": 19,
+                "column": 7
+            }
+        }
+    ],
+    "errors": []
+}
