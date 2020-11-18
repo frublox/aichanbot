@@ -1,7 +1,0 @@
-1:1-1:1::Lifted.$trModule :: "GHC.Types.Module"
-9:1-9:12::Lifted.atomicallyL :: "forall a##xo b##xo .\n(Control.Monad.IO.Class.MonadIO<[]> a##xo) =>\n(GHC.Conc.Sync.STM b##xo) -> a##xo b##xo"
-9:15-9:21::_ :: "forall a##xo . (GHC.Types.IO a##xo) -> b##xo a##xo"
-9:24-9:34::_ :: "{VV : forall a##xo .\n      (GHC.Conc.Sync.STM a##xo) -> (GHC.Types.IO a##xo) | VV == atomically}"
-13:1-13:12::Lifted.readTVarIOL :: "forall a##xo b##xo .\n(Control.Monad.IO.Class.MonadIO<[]> a##xo) =>\n(GHC.Conc.Sync.TVar b##xo) -> a##xo b##xo"
-13:15-13:21::_ :: "forall a##xo . (GHC.Types.IO a##xo) -> b##xo a##xo"
-13:24-13:34::_ :: "{VV : forall a##xo .\n      (GHC.Conc.Sync.TVar a##xo) -> (GHC.Types.IO a##xo) | VV == readTVarIO}"

@@ -2,7 +2,6 @@
 
 module Irc.Parser
     ( eventP
-    , twitchTagP
     , twitchTagsP
     , msgTextP
     , msgSourceP
@@ -47,20 +46,20 @@ eventP = do
         "KICK"    -> EKick
         "PING"    -> EPing
         "PONG"    -> EPong
-        _         -> if all isDigit event then ENumeric else ERawMsg
-
-twitchTagP :: Parser (Text, [Text])
-twitchTagP = do
-    key <- some (noneOf ['='])
-    char '='
-    values <- many (noneOf [',', ' ', ';']) `sepBy` char ','
-    pure (Text.pack key, map Text.pack values)
+        _         -> if all isDigit event then ENumeric (read event) else ERawMsg
 
 twitchTagsP :: Parser (HashMap Text [Text])
 twitchTagsP = do
     char '@'
     tags <- twitchTagP `sepBy` char ';'
     pure (HashMap.fromList tags)
+    where
+        twitchTagP :: Parser (Text, [Text])
+        twitchTagP = do
+            key <- some (noneOf ['='])
+            char '='
+            values <- many (noneOf [',', ' ', ';']) `sepBy` char ','
+            pure (Text.pack key, map Text.pack values)
 
 msgTextP :: Parser Text
 msgTextP = do

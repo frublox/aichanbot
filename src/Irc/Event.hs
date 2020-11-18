@@ -16,6 +16,6 @@ data Event
     | EKick
     | EPing
     | EPong
-    | ENumeric
+    | ENumeric Int
     | ERawMsg
     deriving (Eq, Show)

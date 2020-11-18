@@ -33,8 +33,5 @@
             "success": "Successfully reloaded bot data."
         }
     },
-    "responses": {
-        "KonCha": "KonCha",
-        "VoHiYo": "VoHiYo"
-    }
+    "responses": {}
 }
